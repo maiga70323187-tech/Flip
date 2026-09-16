@@ -1,71 +1,77 @@
-# FlipaClip Animation MCP — archive complète
+# Flip — Studio d'animation 2D pilotable par IA
 
-Cette archive regroupe **tout ce qui a été retrouvé** du projet ainsi qu'un **MVP de code reconstruit** à partir du cahier d'architecture sauvegardé.
+**Objectif** : une app d'animation 2D style FlipaClip, **pilotée par un agent IA** (Claude, ChatGPT, Manus, tout client MCP ou OpenAPI), **sans aucun modèle externe** pour la génération d'images ou de vidéos. L'agent **compose** la scène à partir de primitives locales — il ne « génère » rien de visuel.
 
-## Important : provenance
+## Principe
 
-Les éléments réellement retrouvés sont conservés dans `recovered/` et `docs/` :
-- archive originale du projet requin ;
-- `storyboard.json` ;
-- `mcp_execution_plan.json` ;
-- cahier `plan-app-animation-ia.md` ;
-- audio MiniMax et transcription SRT ;
-- images générées disponibles dans la conversation.
+- **Timeline hybride** : couches vectorielles (SVG paths, formes, rigging à os) **+** couches raster frame-by-frame.
+- **Aucune dépendance IA externe** : pas de Gemini, DALL-E, MiniMax ou équivalent. Toutes les images sortent d'ici : formes primitives, chemins, keyframes, dessins de l'utilisateur.
+- **Deux surfaces d'accès pour agents** :
+  - **Serveur MCP** (`mcp-server/`) : compatible Claude Desktop et tout client MCP.
+  - **API HTTP** (`backend/`) documentée en **OpenAPI 3.1** (`backend/openapi.json`) : compatible ChatGPT Actions, Manus, requêtes HTTP classiques.
 
-Aucun code frontend/backend n'était présent dans l'archive d'origine. Les dossiers `backend/`, `frontend/` et `mcp-server/` ont donc été **reconstruits** conformément au plan sauvegardé : React + Vite, Node.js/Express, stockage JSON, modèle Frame/Element, outils MCP et tests.
+## Architecture des données
 
-## Arborescence
+Une **frame n'est pas une image aplatie**. C'est une composition vivante :
 
-```text
-FlipaClip_Animation_MCP_COMPLETE/
-├── backend/              API Express + stockage JSON
-├── frontend/             Interface React/Vite
-├── mcp-server/           Serveur MCP exposant les outils d'animation
-├── input/                audio, transcription, storyboard et assets d'entrée
-├── output/               images/storyboards générés et exports
-├── tests/                tests répartis dans les trois modules
-├── docs/                 architecture et documentation
-├── scripts/              validation et lancement des tests
-└── recovered/            fichiers originaux retrouvés, non modifiés
 ```
+Project
+├── layers[]
+│   ├── kind: "vector"
+│   │   ├── shapes[]  (type, props, transform, style, tracks: {property: keyframes[]})
+│   │   └── bones[]   (rigging squelettique)
+│   └── kind: "raster"
+│       └── frames[]  (image dessinée + strokes, dessin FBF)
+├── symbols[]      (formes réutilisables)
+├── assets[]       (uploads bitmap facultatifs)
+└── audio_tracks[]
+```
+
+Chaque **shape** possède ses `tracks` — un tableau de keyframes par propriété animée (`x`, `y`, `rotation`, `scale_x`, `scale_y`, `opacity`, `fill`, `stroke`, `stroke_width`, `d`). Le rendu à un instant `t_ms` interpole ces valeurs avec la courbe d'easing choisie.
+
+## Outils MCP exposés
+
+| Catégorie | Outils |
+|---|---|
+| Projets | `list_projects`, `create_project`, `get_project`, `update_project` |
+| Calques | `add_layer` (vector/raster), `update_layer`, `delete_layer`, `reorder_layers` |
+| Formes  | `add_shape`, `draw_path`, `update_shape`, `delete_shape`, `move_shape`, `rotate_shape`, `scale_shape` |
+| Animation | `add_keyframe`, `tween_property` |
+| Rigging | `add_bone`, `update_bone` |
+| Frame-by-frame | `add_raster_frame` |
+| Rendu / export | `render_frame_svg`, `get_manifest`, `export_project` |
+
+Un agent peut, sans aucun modèle externe, dessiner un personnage à partir de paths SVG, l'assembler avec un rig d'os, poser des tweens sur ses articulations, et exporter le rendu.
 
 ## Démarrage
 
-Prérequis : Node.js 20+ et npm.
+Prérequis : Node.js 20+.
 
 ```bash
 npm install
-npm run validate
-npm test
-npm run dev:backend
-npm run dev:frontend
+npm run validate       # vérifie la structure du projet
+npm test               # lance les tests des trois modules
+npm run dev:backend    # API HTTP sur http://localhost:8787
+npm run dev:frontend   # UI React sur http://localhost:5173
+npm run start:mcp      # serveur MCP (stdio) pour les clients MCP
 ```
 
-Dans un autre terminal :
+Exemple procédural : `node scripts/seed-example.mjs` crée un projet « balle qui rebondit » via l'API HTTP.
 
-```bash
-npm run start:mcp
-```
+## Connecter un agent IA
 
-Backend par défaut : `http://localhost:8787`  
-Frontend Vite : `http://localhost:5173`
+- **Claude Desktop / Manus (MCP)** : configurer un serveur MCP `flip-animation-agent` pointant sur `node mcp-server/src/index.js`. Variable d'environnement : `FLIP_API_URL` si le backend n'est pas sur `http://localhost:8787`.
+- **ChatGPT (Actions)** : importer `backend/openapi.json` dans un GPT personnalisé. Aucune clé n'est requise pour l'usage local.
+- **Autres clients** : appeler l'API HTTP directement, en suivant l'OpenAPI.
 
-## Modèle de données
+## Provenance
 
-Une frame contient des éléments indépendants. Un élément possède :
-`id`, `type`, `image_ref`, `x`, `y`, `rotation`, `scale`, `layer_order`, `visible`.
+Le dossier `recovered/` conserve la version précédente (archive originale « requin » et plan d'architecture) telle que sauvegardée. Le dossier `input/` contient le storyboard, l'audio et la transcription initiaux. Le socle actif (`backend/`, `frontend/`, `mcp-server/`) a été **refondu** pour retirer toute dépendance à un modèle IA externe et mettre en place le moteur vectoriel + frame-by-frame décrit ci-dessus.
 
-Le même `image_ref` peut être réutilisé d'une frame à l'autre, ce qui permet à l'agent MCP de déplacer, faire pivoter, redimensionner ou masquer un élément sans régénérer toute l'image.
+## Roadmap immédiate
 
-## Outils MCP inclus
-
-- génération : `generate_character`, `generate_object`, `generate_background`
-- timeline : `create_frame`, `duplicate_frame`, `delete_frame`, `reorder_frames`
-- mouvement : `move_element`, `rotate_element`, `scale_element`
-- calques : `create_layer`, `set_layer_order`, `toggle_layer_visibility`
-- édition : `inpaint_region`
-- effets : `add_transition`, `apply_effect`
-- audio : `add_audio_track`, `sync_to_audio`
-- sortie : `preview_animation`, `export_animation`
-
-Les générations IA sont prévues comme adaptateurs. Sans clé/provider configuré, le backend fonctionne en mode **mock déterministe** et produit un manifeste d'asset au lieu d'appeler un service externe.
+- Éditeur de path SVG dans le frontend (pinceau, points de contrôle Bézier).
+- Rig visualisé (os cliquables, poids sur les formes).
+- Export **WebM/MP4** local via `canvas` côté serveur (headless) + `ffmpeg`, sans service tiers.
+- Exports **Lottie** et **SVG animé** natifs.
+- Bibliothèque de symboles vectoriels livrée avec l'app (facultative), pour accélérer l'agent sur des cas typiques (personnage debout, ombre au sol, panneau, arbre…).

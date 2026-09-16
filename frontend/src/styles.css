@@ -1,1 +1,34 @@
-:root{font-family:Inter,system-ui,sans-serif;background:#10131a;color:#eef2ff}*{box-sizing:border-box}body{margin:0}main{max-width:1400px;margin:auto;padding:20px}header,.toolbar,.timeline,.panel{background:#181d28;border:1px solid #2c3445;border-radius:14px;padding:14px}.toolbar{display:flex;gap:10px;margin:14px 0}.workspace{display:grid;grid-template-columns:minmax(320px,1fr) 320px;gap:16px}.stage-wrap{display:flex;justify-content:center;background:#0b0d12;border-radius:14px;padding:12px}.stage{position:relative;width:min(100%,560px);overflow:hidden;background:#fff}.stage-el{position:absolute;max-width:100%;max-height:100%;transform-origin:center;cursor:pointer}.stage-el.selected{outline:3px solid #70a5ff}.timeline{display:flex;gap:8px;overflow:auto;margin-top:14px}.timeline button{min-width:80px}.timeline button.active{outline:2px solid #70a5ff}.timeline small{display:block}button,input,select{border-radius:8px;border:1px solid #3a445a;background:#222938;color:#fff;padding:8px}label{display:flex;justify-content:space-between;gap:8px;margin:8px 0}.panel{margin-bottom:12px}.error{background:#5a1e2b;padding:10px;border-radius:8px}@media(max-width:800px){.workspace{grid-template-columns:1fr}}
+:root { color-scheme: light dark; font-family: system-ui, sans-serif; --bg: #f6f6f8; --fg: #111; --panel: #fff; --border: #ddd; --accent: #0af; }
+@media (prefers-color-scheme: dark) { :root { --bg: #14161a; --fg: #eee; --panel: #1c1f24; --border: #2a2d33; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); }
+main { max-width: 1400px; margin: 0 auto; padding: 16px; }
+header h1 { margin: 0; font-size: 20px; }
+header p { margin: 4px 0 12px; opacity: .7; font-size: 13px; }
+.error { background: #b00020; color: #fff; padding: 8px 12px; border-radius: 6px; margin-bottom: 8px; cursor: pointer; }
+.toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+.toolbar select, .toolbar button, .toolbar a { padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); color: var(--fg); text-decoration: none; }
+.workspace { display: grid; grid-template-columns: 220px 1fr 280px; gap: 12px; }
+.stage { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; min-height: 480px; display: grid; place-items: center; }
+.stage svg { max-width: 100%; max-height: 70vh; }
+.stage.placeholder { color: #999; }
+.layers, .inspector { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px; font-size: 13px; }
+.layers header { display: flex; justify-content: space-between; align-items: center; }
+.layers ul { list-style: none; padding: 0; margin: 8px 0 0; }
+.layers li { display: flex; align-items: center; gap: 6px; padding: 4px 0; }
+.layers li button { margin-left: auto; }
+.inspector section { border-top: 1px solid var(--border); padding-top: 8px; margin-top: 8px; }
+.inspector section:first-child { border-top: none; padding-top: 0; margin-top: 0; }
+.inspector label { display: flex; justify-content: space-between; align-items: center; margin: 4px 0; gap: 8px; }
+.inspector input, .inspector select, .inspector textarea { width: 55%; }
+.inspector button { padding: 4px 8px; margin: 2px; font-size: 12px; }
+.inspector .danger { background: #b00020; color: #fff; border: none; margin-top: 8px; }
+.kf-buttons { display: flex; flex-wrap: wrap; }
+.timeline { margin-top: 12px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+.timeline input[type=range] { width: 100%; }
+.timeline .controls { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+.timeline .tracks { margin-top: 8px; font-size: 12px; }
+.timeline .track { display: grid; grid-template-columns: 160px 1fr; gap: 8px; align-items: center; padding: 2px 0; }
+.timeline .lane { position: relative; height: 18px; background: rgba(127,127,127,.08); border-radius: 4px; }
+.timeline .kf { position: absolute; top: 3px; width: 12px; height: 12px; background: var(--accent); transform: rotate(45deg); }
+.timeline .rf { position: absolute; top: 3px; width: 4px; height: 12px; background: #f60; }

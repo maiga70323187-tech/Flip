@@ -1,2 +1,23 @@
-import fs from 'node:fs';import path from 'node:path';
-const required=['README.md','backend/src/app.js','frontend/src/App.jsx','mcp-server/src/index.js','input/storyboard/storyboard.json','input/audio/MiniMax_2026-09-16_20_22_39_Maxime.mp3','input/transcripts/transcription_requins_horodatee.srt'];let bad=0;for(const f of required){const ok=fs.existsSync(path.resolve(f));console.log(`${ok?'OK':'MISSING'} ${f}`);if(!ok)bad++}const s=JSON.parse(fs.readFileSync('input/storyboard/storyboard.json','utf8'));console.log(`Storyboard plans: ${s.plans?.length??0}`);if((s.plans?.length??0)!==25)bad++;process.exitCode=bad?1:0;
+import fs from 'node:fs';
+import path from 'node:path';
+
+const required = [
+  'README.md',
+  'backend/src/app.js',
+  'backend/src/lib/model.js',
+  'backend/src/lib/store.js',
+  'backend/src/services/render.js',
+  'backend/openapi.json',
+  'frontend/src/App.jsx',
+  'frontend/src/components/Stage.jsx',
+  'frontend/src/lib/interpolate.js',
+  'mcp-server/src/index.js',
+];
+
+let bad = 0;
+for (const f of required) {
+  const ok = fs.existsSync(path.resolve(f));
+  console.log(`${ok ? 'OK    ' : 'MISS  '} ${f}`);
+  if (!ok) bad++;
+}
+process.exitCode = bad ? 1 : 0;

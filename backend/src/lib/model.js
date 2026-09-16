@@ -1,43 +1,75 @@
-import { randomUUID } from 'node:crypto';
+import crypto from 'node:crypto';
 
-export function newElement(input = {}) {
+const uid = () => crypto.randomUUID();
+
+export const SHAPE_TYPES = ['path', 'rect', 'ellipse', 'polygon', 'line', 'text', 'group', 'image'];
+export const LAYER_KINDS = ['vector', 'raster'];
+export const ANIMATABLE = ['x', 'y', 'rotation', 'scale_x', 'scale_y', 'opacity', 'fill', 'stroke', 'stroke_width', 'd'];
+export const EASINGS = ['linear', 'ease-in', 'ease-out', 'ease-in-out', 'step', 'bezier'];
+
+export function newProject({ name = 'Nouveau projet', width = 1920, height = 1080, fps = 24, duration_ms = 5000 } = {}) {
   return {
-    id: input.id ?? randomUUID(),
-    type: input.type ?? 'object',
-    image_ref: input.image_ref ?? '',
-    x: Number(input.x ?? 0),
-    y: Number(input.y ?? 0),
-    rotation: Number(input.rotation ?? 0),
-    scale: Number(input.scale ?? 1),
-    layer_order: Number(input.layer_order ?? 0),
-    visible: input.visible ?? true,
-    meta: input.meta ?? {}
+    id: uid(),
+    name,
+    width,
+    height,
+    fps,
+    duration_ms,
+    background: '#ffffff',
+    assets: [],
+    symbols: [],
+    layers: [],
+    audio_tracks: [],
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
   };
 }
 
-export function newFrame(input = {}) {
+export function newVectorLayer({ name = 'Calque vectoriel' } = {}) {
+  return { id: uid(), kind: 'vector', name, visible: true, opacity: 1, locked: false, shapes: [], bones: [] };
+}
+
+export function newRasterLayer({ name = 'Calque frame-by-frame', fps = 12 } = {}) {
+  return { id: uid(), kind: 'raster', name, visible: true, opacity: 1, locked: false, fps, frames: [] };
+}
+
+export function newShape({ type = 'rect', props = {}, transform = {}, style = {} } = {}) {
+  if (!SHAPE_TYPES.includes(type)) throw new Error(`unknown shape type: ${type}`);
   return {
-    id: input.id ?? randomUUID(),
-    duration_ms: Number(input.duration_ms ?? 1000),
-    elements: (input.elements ?? []).map(newElement),
-    transitions: input.transitions ?? [],
-    effects: input.effects ?? [],
-    meta: input.meta ?? {}
+    id: uid(),
+    type,
+    props: { ...defaultShapeProps(type), ...props },
+    transform: { x: 0, y: 0, rotation: 0, scale_x: 1, scale_y: 1, anchor_x: 0.5, anchor_y: 0.5, ...transform },
+    style: { fill: '#222222', stroke: 'none', stroke_width: 0, opacity: 1, ...style },
+    tracks: {},
+    parent_bone: null,
   };
 }
 
-export function newProject(input = {}) {
-  const now = new Date().toISOString();
-  return {
-    id: input.id ?? randomUUID(),
-    name: input.name ?? 'Nouveau projet',
-    width: Number(input.width ?? 1080),
-    height: Number(input.height ?? 1920),
-    fps: Number(input.fps ?? 12),
-    created_at: input.created_at ?? now,
-    updated_at: now,
-    frames: (input.frames ?? []).map(newFrame),
-    audio_tracks: input.audio_tracks ?? [],
-    meta: input.meta ?? {}
-  };
+function defaultShapeProps(type) {
+  switch (type) {
+    case 'rect':     return { width: 100, height: 100, rx: 0, ry: 0 };
+    case 'ellipse':  return { rx: 50, ry: 50 };
+    case 'path':     return { d: 'M 0 0 L 100 0 L 100 100 Z' };
+    case 'polygon':  return { points: '0,0 100,0 100,100 0,100' };
+    case 'line':     return { x1: 0, y1: 0, x2: 100, y2: 0 };
+    case 'text':     return { text: 'Texte', font_family: 'sans-serif', font_size: 32, font_weight: 400 };
+    case 'group':    return { children: [] };
+    case 'image':    return { asset_id: null, width: 100, height: 100 };
+    default:         return {};
+  }
+}
+
+export function newBone({ name = 'os', parent_id = null, length = 60, rotation = 0, x = 0, y = 0 } = {}) {
+  return { id: uid(), name, parent_id, length, rotation, x, y };
+}
+
+export function newKeyframe({ time_ms, value, easing = 'linear', bezier = null } = {}) {
+  if (typeof time_ms !== 'number') throw new Error('time_ms is required');
+  if (!EASINGS.includes(easing)) throw new Error(`unknown easing: ${easing}`);
+  return { id: uid(), time_ms, value, easing, bezier };
+}
+
+export function newRasterFrame({ duration_ms = 83, image = null, strokes = [] } = {}) {
+  return { id: uid(), duration_ms, image, strokes };
 }

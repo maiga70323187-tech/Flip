@@ -3,38 +3,177 @@ import cors from 'cors';
 import multer from 'multer';
 import path from 'node:path';
 import fs from 'node:fs/promises';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { JsonStore } from './lib/store.js';
-import { assertProjectInput, assertElementInput, assertReorder } from './lib/validate.js';
-import { generateAsset, inpaintAsset } from './services/generator.js';
-import { previewManifest } from './services/timeline.js';
+import {
+  assertProjectInput, assertLayerInput, assertShapeInput,
+  assertKeyframeInput, assertRasterFrameInput, assertReorder,
+} from './lib/validate.js';
+import { renderFrameSvg, renderManifest } from './services/render.js';
 
-const here=path.dirname(fileURLToPath(import.meta.url));
-const dataRoot=process.env.FLIPACLIP_DATA_DIR ?? path.resolve(here,'../data/projects');
-const assetRoot=process.env.FLIPACLIP_ASSET_DIR ?? path.resolve(here,'../data/assets');
-export const store=new JsonStore(dataRoot);
-await store.init(); await fs.mkdir(assetRoot,{recursive:true});
+const here = path.dirname(fileURLToPath(import.meta.url));
+const dataRoot = process.env.FLIP_DATA_DIR ?? path.resolve(here, '../data/projects');
+const assetRoot = process.env.FLIP_ASSET_DIR ?? path.resolve(here, '../data/assets');
 
-export function createApp(){
- const app=express(); app.use(cors()); app.use(express.json({limit:'10mb'}));
- const upload=multer({dest:assetRoot});
- app.get('/health',(req,res)=>res.json({ok:true,service:'flipaclip-animation-backend'}));
- app.get('/api/projects',async(req,res)=>res.json(await store.listProjects()));
- app.post('/api/projects',async(req,res,next)=>{try{assertProjectInput(req.body);res.status(201).json(await store.createProject(req.body));}catch(e){next(e)}});
- app.get('/api/projects/:id',async(req,res)=>{const p=await store.getProject(req.params.id); p?res.json(p):res.status(404).json({error:'project not found'});});
- app.delete('/api/projects/:id',async(req,res)=>res.status((await store.deleteProject(req.params.id))?204:404).end());
- app.post('/api/projects/:id/frames',async(req,res,next)=>{try{const f=await store.addFrame(req.params.id,req.body);f?res.status(201).json(f):res.status(404).json({error:'project not found'});}catch(e){next(e)}});
- app.post('/api/projects/:id/frames/:frameId/duplicate',async(req,res,next)=>{try{const f=await store.duplicateFrame(req.params.id,req.params.frameId);f?res.status(201).json(f):res.status(404).json({error:'project not found'});}catch(e){next(e)}});
- app.delete('/api/projects/:id/frames/:frameId',async(req,res,next)=>{try{const r=await store.deleteFrame(req.params.id,req.params.frameId);r===null?res.status(404).json({error:'project not found'}):res.status(r?204:404).end();}catch(e){next(e)}});
- app.put('/api/projects/:id/frames/reorder',async(req,res,next)=>{try{const p=await store.getProject(req.params.id);if(!p)return res.status(404).json({error:'project not found'});assertReorder(req.body.frame_ids,p.frames);res.json(await store.reorderFrames(req.params.id,req.body.frame_ids));}catch(e){next(e)}});
- app.post('/api/projects/:id/frames/:frameId/elements',async(req,res,next)=>{try{assertElementInput(req.body);const e=await store.addElement(req.params.id,req.params.frameId,req.body);e?res.status(201).json(e):res.status(404).json({error:'project not found'});}catch(e){next(e)}});
- app.patch('/api/projects/:id/frames/:frameId/elements/:elementId',async(req,res,next)=>{try{assertElementInput(req.body);const e=await store.updateElement(req.params.id,req.params.frameId,req.params.elementId,req.body);e?res.json(e):res.status(404).json({error:'project not found'});}catch(e){next(e)}});
- app.delete('/api/projects/:id/frames/:frameId/elements/:elementId',async(req,res,next)=>{try{const r=await store.deleteElement(req.params.id,req.params.frameId,req.params.elementId);r===null?res.status(404).json({error:'project not found'}):res.status(r?204:404).end();}catch(e){next(e)}});
- app.post('/api/projects/:id/audio',upload.single('audio'),async(req,res,next)=>{try{const track={id:crypto.randomUUID(),name:req.file?.originalname??req.body.name??'audio',file:req.file?.path??req.body.file,start_ms:Number(req.body.start_ms??0)};const p=await store.mutate(req.params.id,pr=>pr.audio_tracks.push(track));p?res.status(201).json(track):res.status(404).json({error:'project not found'});}catch(e){next(e)}});
- app.post('/api/generate/:kind',async(req,res,next)=>{try{const allowed=['character','object','background'];if(!allowed.includes(req.params.kind))return res.status(400).json({error:'unsupported kind'});res.status(201).json(await generateAsset({kind:req.params.kind,prompt:req.body.prompt??'',assetRoot}));}catch(e){next(e)}});
- app.post('/api/inpaint',async(req,res,next)=>{try{res.json(await inpaintAsset(req.body));}catch(e){next(e)}});
- app.get('/api/projects/:id/preview',async(req,res)=>{const p=await store.getProject(req.params.id);p?res.json(previewManifest(p)):res.status(404).json({error:'project not found'});});
- app.post('/api/projects/:id/export',async(req,res,next)=>{try{const p=await store.getProject(req.params.id);if(!p)return res.status(404).json({error:'project not found'});const manifest=previewManifest(p);const exportDir=process.env.FLIPACLIP_EXPORT_DIR ?? path.resolve(here,'../../output/exports');await fs.mkdir(exportDir,{recursive:true});const file=path.join(exportDir,`${p.id}-${Date.now()}.json`);await fs.writeFile(file,JSON.stringify({...manifest,requested_format:req.body.format??'mp4'},null,2));res.status(201).json({status:'manifest-exported',file});}catch(e){next(e)}});
- app.use((err,req,res,next)=>{console.error(err);res.status(400).json({error:err.message});});
- return app;
+export const store = new JsonStore(dataRoot);
+await store.init();
+await fs.mkdir(assetRoot, { recursive: true });
+
+const notFound = (res) => res.status(404).json({ error: 'not found' });
+const ok = (res, v, code = 200) => v == null ? notFound(res) : res.status(code).json(v);
+const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
+
+export function createApp() {
+  const app = express();
+  app.use(cors());
+  app.use(express.json({ limit: '25mb' }));
+  const upload = multer({ dest: assetRoot });
+
+  // ---------- meta ----------
+  app.get('/health', (req, res) => res.json({ ok: true, service: 'flip-animation-backend' }));
+  app.get('/api/openapi.json', wrap(async (req, res) => {
+    const spec = await fs.readFile(path.resolve(here, '../openapi.json'), 'utf8').catch(() => null);
+    if (spec) res.type('application/json').send(spec);
+    else res.status(404).json({ error: 'openapi spec missing' });
+  }));
+
+  // ---------- projects ----------
+  app.get('/api/projects', wrap(async (req, res) => res.json(await store.listProjects())));
+  app.post('/api/projects', wrap(async (req, res) => {
+    assertProjectInput(req.body);
+    ok(res, await store.createProject(req.body), 201);
+  }));
+  app.get('/api/projects/:id', wrap(async (req, res) => ok(res, await store.getProject(req.params.id))));
+  app.patch('/api/projects/:id', wrap(async (req, res) => {
+    assertProjectInput(req.body);
+    ok(res, await store.mutate(req.params.id, p => Object.assign(p, req.body)));
+  }));
+  app.delete('/api/projects/:id', wrap(async (req, res) => res.status(await store.deleteProject(req.params.id) ? 204 : 404).end()));
+
+  // ---------- layers ----------
+  app.post('/api/projects/:id/layers', wrap(async (req, res) => {
+    assertLayerInput(req.body);
+    ok(res, await store.addLayer(req.params.id, req.body), 201);
+  }));
+  app.patch('/api/projects/:id/layers/:layerId', wrap(async (req, res) => {
+    ok(res, await store.patchLayer(req.params.id, req.params.layerId, req.body));
+  }));
+  app.delete('/api/projects/:id/layers/:layerId', wrap(async (req, res) => {
+    res.status(await store.deleteLayer(req.params.id, req.params.layerId) ? 204 : 404).end();
+  }));
+  app.put('/api/projects/:id/layers/reorder', wrap(async (req, res) => {
+    const p = await store.getProject(req.params.id);
+    if (!p) return notFound(res);
+    assertReorder(req.body.layer_ids, p.layers);
+    ok(res, await store.reorderLayers(req.params.id, req.body.layer_ids));
+  }));
+
+  // ---------- shapes ----------
+  app.post('/api/projects/:id/layers/:layerId/shapes', wrap(async (req, res) => {
+    assertShapeInput(req.body);
+    ok(res, await store.addShape(req.params.id, req.params.layerId, req.body), 201);
+  }));
+  app.patch('/api/projects/:id/layers/:layerId/shapes/:shapeId', wrap(async (req, res) => {
+    ok(res, await store.patchShape(req.params.id, req.params.layerId, req.params.shapeId, req.body));
+  }));
+  app.delete('/api/projects/:id/layers/:layerId/shapes/:shapeId', wrap(async (req, res) => {
+    res.status(await store.deleteShape(req.params.id, req.params.layerId, req.params.shapeId) ? 204 : 404).end();
+  }));
+
+  // ---------- keyframes ----------
+  app.post('/api/projects/:id/layers/:layerId/shapes/:shapeId/keyframes', wrap(async (req, res) => {
+    assertKeyframeInput(req.body);
+    ok(res, await store.addKeyframe(req.params.id, req.params.layerId, req.params.shapeId, req.body.property, req.body), 201);
+  }));
+  app.delete('/api/projects/:id/layers/:layerId/shapes/:shapeId/keyframes/:keyframeId', wrap(async (req, res) => {
+    const { property } = req.query;
+    if (!property) return res.status(400).json({ error: 'property query param required' });
+    res.status(await store.deleteKeyframe(req.params.id, req.params.layerId, req.params.shapeId, property, req.params.keyframeId) ? 204 : 404).end();
+  }));
+
+  // ---------- bones ----------
+  app.post('/api/projects/:id/layers/:layerId/bones', wrap(async (req, res) => {
+    ok(res, await store.addBone(req.params.id, req.params.layerId, req.body), 201);
+  }));
+  app.patch('/api/projects/:id/layers/:layerId/bones/:boneId', wrap(async (req, res) => {
+    ok(res, await store.patchBone(req.params.id, req.params.layerId, req.params.boneId, req.body));
+  }));
+
+  // ---------- raster frames ----------
+  app.post('/api/projects/:id/layers/:layerId/frames', wrap(async (req, res) => {
+    assertRasterFrameInput(req.body);
+    ok(res, await store.addRasterFrame(req.params.id, req.params.layerId, req.body), 201);
+  }));
+  app.patch('/api/projects/:id/layers/:layerId/frames/:frameId', wrap(async (req, res) => {
+    ok(res, await store.patchRasterFrame(req.params.id, req.params.layerId, req.params.frameId, req.body));
+  }));
+  app.delete('/api/projects/:id/layers/:layerId/frames/:frameId', wrap(async (req, res) => {
+    res.status(await store.deleteRasterFrame(req.params.id, req.params.layerId, req.params.frameId) ? 204 : 404).end();
+  }));
+
+  // ---------- assets ----------
+  app.post('/api/projects/:id/assets', upload.single('file'), wrap(async (req, res) => {
+    const asset = {
+      id: crypto.randomUUID(),
+      kind: req.body.kind ?? 'bitmap',
+      name: req.file?.originalname ?? req.body.name ?? 'asset',
+      file: req.file?.path,
+      mime: req.file?.mimetype,
+    };
+    const p = await store.mutate(req.params.id, pr => pr.assets.push(asset));
+    ok(res, p && asset, 201);
+  }));
+
+  // ---------- symbols ----------
+  app.post('/api/projects/:id/symbols', wrap(async (req, res) => {
+    ok(res, await store.addSymbol(req.params.id, req.body), 201);
+  }));
+
+  // ---------- audio ----------
+  app.post('/api/projects/:id/audio', upload.single('audio'), wrap(async (req, res) => {
+    const track = {
+      id: crypto.randomUUID(),
+      name: req.file?.originalname ?? req.body.name ?? 'audio',
+      file: req.file?.path ?? req.body.file,
+      start_ms: Number(req.body.start_ms ?? 0),
+    };
+    const p = await store.mutate(req.params.id, pr => pr.audio_tracks.push(track));
+    ok(res, p && track, 201);
+  }));
+
+  // ---------- render & export ----------
+  app.get('/api/projects/:id/manifest', wrap(async (req, res) => {
+    const p = await store.getProject(req.params.id);
+    if (!p) return notFound(res);
+    res.json(renderManifest(p));
+  }));
+
+  app.get('/api/projects/:id/render', wrap(async (req, res) => {
+    const p = await store.getProject(req.params.id);
+    if (!p) return notFound(res);
+    const t = Number(req.query.t_ms ?? 0);
+    const svg = renderFrameSvg(p, t);
+    res.type('image/svg+xml').send(svg);
+  }));
+
+  app.post('/api/projects/:id/export', wrap(async (req, res) => {
+    const p = await store.getProject(req.params.id);
+    if (!p) return notFound(res);
+    const format = req.body.format ?? 'json';
+    const exportDir = process.env.FLIP_EXPORT_DIR ?? path.resolve(here, '../../output/exports');
+    await fs.mkdir(exportDir, { recursive: true });
+    const stamp = Date.now();
+    const file = path.join(exportDir, `${p.id}-${stamp}.${format === 'svg' ? 'svg' : 'json'}`);
+    if (format === 'svg') await fs.writeFile(file, renderFrameSvg(p, Number(req.body.t_ms ?? 0)));
+    else await fs.writeFile(file, JSON.stringify({ project: p, manifest: renderManifest(p) }, null, 2));
+    res.status(201).json({ status: 'exported', format, file });
+  }));
+
+  // ---------- errors ----------
+  app.use((err, req, res, next) => {
+    console.error(err);
+    res.status(err.status ?? 500).json({ error: err.message });
+  });
+  return app;
 }

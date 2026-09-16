@@ -1,0 +1,89 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Flip Animation API",
+    "version": "1.0.0",
+    "description": "API HTTP pour composer et rendre des animations 2D vectorielles + frame-by-frame. Aucun modèle IA externe : l'agent construit tout à partir de primitives (formes, chemins, keyframes, os). Cette API peut être branchée à un agent IA (ChatGPT Actions, Manus, tout client OpenAPI) ; le serveur MCP miroir expose les mêmes capacités."
+  },
+  "servers": [{ "url": "http://localhost:8787" }],
+  "paths": {
+    "/health": { "get": { "summary": "Ping", "responses": { "200": { "description": "OK" } } } },
+    "/api/projects": {
+      "get": { "summary": "Lister les projets", "responses": { "200": { "description": "Liste" } } },
+      "post": { "summary": "Créer un projet", "requestBody": { "$ref": "#/components/requestBodies/ProjectInput" }, "responses": { "201": { "description": "Créé" } } }
+    },
+    "/api/projects/{id}": {
+      "parameters": [{ "$ref": "#/components/parameters/ProjectId" }],
+      "get":    { "summary": "Lire un projet", "responses": { "200": { "description": "Projet" } } },
+      "patch":  { "summary": "Modifier un projet", "requestBody": { "$ref": "#/components/requestBodies/ProjectInput" }, "responses": { "200": { "description": "Projet" } } },
+      "delete": { "summary": "Supprimer un projet", "responses": { "204": { "description": "Supprimé" } } }
+    },
+    "/api/projects/{id}/layers": {
+      "parameters": [{ "$ref": "#/components/parameters/ProjectId" }],
+      "post": { "summary": "Ajouter un calque (vector ou raster)", "requestBody": { "$ref": "#/components/requestBodies/LayerInput" }, "responses": { "201": { "description": "Calque" } } }
+    },
+    "/api/projects/{id}/layers/reorder": {
+      "parameters": [{ "$ref": "#/components/parameters/ProjectId" }],
+      "put": { "summary": "Réordonner les calques", "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "layer_ids": { "type": "array", "items": { "type": "string" } } }, "required": ["layer_ids"] } } } }, "responses": { "200": { "description": "OK" } } }
+    },
+    "/api/projects/{id}/layers/{layerId}": {
+      "parameters": [{ "$ref": "#/components/parameters/ProjectId" }, { "$ref": "#/components/parameters/LayerId" }],
+      "patch":  { "summary": "Modifier un calque", "responses": { "200": { "description": "OK" } } },
+      "delete": { "summary": "Supprimer un calque", "responses": { "204": { "description": "OK" } } }
+    },
+    "/api/projects/{id}/layers/{layerId}/shapes": {
+      "parameters": [{ "$ref": "#/components/parameters/ProjectId" }, { "$ref": "#/components/parameters/LayerId" }],
+      "post": { "summary": "Ajouter une forme vectorielle", "requestBody": { "$ref": "#/components/requestBodies/ShapeInput" }, "responses": { "201": { "description": "Forme" } } }
+    },
+    "/api/projects/{id}/layers/{layerId}/shapes/{shapeId}": {
+      "parameters": [{ "$ref": "#/components/parameters/ProjectId" }, { "$ref": "#/components/parameters/LayerId" }, { "$ref": "#/components/parameters/ShapeId" }],
+      "patch":  { "summary": "Modifier une forme (transform/style/props)", "responses": { "200": { "description": "OK" } } },
+      "delete": { "summary": "Supprimer une forme", "responses": { "204": { "description": "OK" } } }
+    },
+    "/api/projects/{id}/layers/{layerId}/shapes/{shapeId}/keyframes": {
+      "parameters": [{ "$ref": "#/components/parameters/ProjectId" }, { "$ref": "#/components/parameters/LayerId" }, { "$ref": "#/components/parameters/ShapeId" }],
+      "post": { "summary": "Ajouter/écraser une keyframe", "requestBody": { "$ref": "#/components/requestBodies/KeyframeInput" }, "responses": { "201": { "description": "OK" } } }
+    },
+    "/api/projects/{id}/layers/{layerId}/bones": {
+      "parameters": [{ "$ref": "#/components/parameters/ProjectId" }, { "$ref": "#/components/parameters/LayerId" }],
+      "post": { "summary": "Ajouter un os (rigging)", "responses": { "201": { "description": "OK" } } }
+    },
+    "/api/projects/{id}/layers/{layerId}/frames": {
+      "parameters": [{ "$ref": "#/components/parameters/ProjectId" }, { "$ref": "#/components/parameters/LayerId" }],
+      "post": { "summary": "Ajouter une frame raster (dessin FBF)", "requestBody": { "$ref": "#/components/requestBodies/RasterFrameInput" }, "responses": { "201": { "description": "OK" } } }
+    },
+    "/api/projects/{id}/render": {
+      "parameters": [{ "$ref": "#/components/parameters/ProjectId" }, { "name": "t_ms", "in": "query", "schema": { "type": "number" } }],
+      "get": { "summary": "Rendre une frame SVG à t_ms", "responses": { "200": { "description": "SVG" } } }
+    },
+    "/api/projects/{id}/manifest": {
+      "parameters": [{ "$ref": "#/components/parameters/ProjectId" }],
+      "get": { "summary": "Manifeste de rendu", "responses": { "200": { "description": "Manifeste" } } }
+    },
+    "/api/projects/{id}/export": {
+      "parameters": [{ "$ref": "#/components/parameters/ProjectId" }],
+      "post": { "summary": "Exporter (json ou svg)", "responses": { "201": { "description": "OK" } } }
+    }
+  },
+  "components": {
+    "parameters": {
+      "ProjectId": { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+      "LayerId":   { "name": "layerId", "in": "path", "required": true, "schema": { "type": "string" } },
+      "ShapeId":   { "name": "shapeId", "in": "path", "required": true, "schema": { "type": "string" } }
+    },
+    "requestBodies": {
+      "ProjectInput": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProjectInput" } } } },
+      "LayerInput":   { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LayerInput" } } } },
+      "ShapeInput":   { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ShapeInput" } } } },
+      "KeyframeInput":{ "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/KeyframeInput" } } } },
+      "RasterFrameInput":{ "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RasterFrameInput" } } } }
+    },
+    "schemas": {
+      "ProjectInput": { "type": "object", "properties": { "name": { "type": "string" }, "width": { "type": "number" }, "height": { "type": "number" }, "fps": { "type": "number" }, "duration_ms": { "type": "number" }, "background": { "type": "string" } } },
+      "LayerInput":   { "type": "object", "required": ["kind"], "properties": { "kind": { "type": "string", "enum": ["vector", "raster"] }, "name": { "type": "string" }, "opacity": { "type": "number" }, "fps": { "type": "number" } } },
+      "ShapeInput":   { "type": "object", "required": ["type"], "properties": { "type": { "type": "string", "enum": ["path", "rect", "ellipse", "polygon", "line", "text", "group", "image"] }, "props": { "type": "object" }, "transform": { "type": "object" }, "style": { "type": "object" } } },
+      "KeyframeInput":{ "type": "object", "required": ["property", "time_ms", "value"], "properties": { "property": { "type": "string" }, "time_ms": { "type": "number" }, "value": {}, "easing": { "type": "string" } } },
+      "RasterFrameInput":{ "type": "object", "required": ["duration_ms"], "properties": { "duration_ms": { "type": "number" }, "image": { "type": "string" }, "strokes": { "type": "array" } } }
+    }
+  }
+}

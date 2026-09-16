@@ -1,2 +1,14 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {TOOL_NAMES} from '../src/toolDefinitions.js';
-test('required MCP tool surface is complete',()=>{for(const n of ['generate_character','create_frame','move_element','inpaint_region','preview_animation','export_animation'])assert.ok(TOOL_NAMES.includes(n));assert.equal(new Set(TOOL_NAMES).size,TOOL_NAMES.length);});
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { asContent } from '../src/toolDefinitions.js';
+
+test('asContent wraps objects into MCP text content', () => {
+  const r = asContent({ ok: true });
+  assert.equal(r.content[0].type, 'text');
+  assert.match(r.content[0].text, /"ok": true/);
+});
+
+test('asContent passes strings through', () => {
+  const r = asContent('hello');
+  assert.equal(r.content[0].text, 'hello');
+});
