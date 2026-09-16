@@ -1,0 +1,731 @@
+{
+  "project": "Le requin est-il vraiment dangereux ?",
+  "actions": [
+    {
+      "action": "create_project",
+      "args": {
+        "name": "Le requin est-il vraiment dangereux ?",
+        "aspect_ratio": "9:16",
+        "fps": 12,
+        "duration_seconds": 83.0
+      }
+    },
+    {
+      "action": "generate_character",
+      "args": {
+        "asset_id": "shark_main",
+        "token": "[REQUIN]",
+        "prompt": "Main recurring cartoon shark; keep identity, proportions and facial style consistent across all plans."
+      }
+    },
+    {
+      "action": "generate_character",
+      "args": {
+        "asset_id": "human_main",
+        "token": "[HUMAIN]",
+        "prompt": "Main recurring human character; keep identity and graphic style consistent across all plans."
+      }
+    },
+    {
+      "action": "create_scene",
+      "args": {
+        "scene_id": "plan_01",
+        "start": "00:00.0",
+        "end": "00:04.9",
+        "duration": 4.9,
+        "audio_text": "Est-ce que tu savais que l'animal qu'on présente comme l'un des plus dangereux de l'océan…"
+      }
+    },
+    {
+      "action": "generate_background",
+      "args": {
+        "scene_id": "plan_01",
+        "prompt": "[STYLE]. High-angle medium shot of a calm pale turquoise sea; in the center a [HUMAIN] lying on a round orange swim ring with worried eyes looking sideways; a single grey shark dorsal fin sticks out of the water to the right of the swim ring.",
+        "aspect_ratio": "9:16"
+      }
+    },
+    {
+      "action": "animate_scene",
+      "args": {
+        "scene_id": "plan_01",
+        "prompt": "Static camera. The grey dorsal fin slowly circles around the person on the swim ring once; the person nervously follows it with their eyes; the swim ring gently bobs. [FIN VIDÉO]",
+        "fallback_animeeffects": "L'aileron fait un cercle en 3 s ; la bouée monte et descend de ±4 px (cycle de 1,5 s) ; 3 poses de pupilles."
+      }
+    },
+    {
+      "action": "apply_montage",
+      "args": {
+        "scene_id": "plan_01",
+        "instruction": "Caméra fixe. Titre manuscrit « Le requin est-il vraiment dangereux ? » dans le haut, de 0,0 à 4,9 s, retiré à la coupe."
+      }
+    },
+    {
+      "action": "create_scene",
+      "args": {
+        "scene_id": "plan_02",
+        "start": "00:04.9",
+        "end": "00:07.1",
+        "duration": 2.2,
+        "audio_text": "…est en réalité beaucoup moins terrifiant que tu le crois ?"
+      }
+    },
+    {
+      "action": "generate_background",
+      "args": {
+        "scene_id": "plan_02",
+        "prompt": "[STYLE]. Tall split view of the sea: top third above water with a person on an orange swim ring, bottom two thirds underwater in pale turquoise showing the whole [REQUIN] just below, looking up with shy curious eyes, its dorsal fin crossing the water surface.",
+        "aspect_ratio": "9:16"
+      }
+    },
+    {
+      "action": "apply_montage",
+      "args": {
+        "scene_id": "plan_02",
+        "instruction": "Cadrer d'abord la surface (tiers haut), puis bascule vers le bas jusqu'au requin en 1 s dès la coupe, ralentie en fin de course, puis tenue."
+      }
+    },
+    {
+      "action": "create_scene",
+      "args": {
+        "scene_id": "plan_03",
+        "start": "00:07.1",
+        "end": "00:08.3",
+        "duration": 1.2,
+        "audio_text": "Je parle du requin."
+      }
+    },
+    {
+      "action": "generate_background",
+      "args": {
+        "scene_id": "plan_03",
+        "prompt": "[STYLE]. Front close-up of the [REQUIN] facing the camera, one pectoral fin raised as if waving hello, soft pale turquoise underwater background.",
+        "aspect_ratio": "9:16"
+      }
+    },
+    {
+      "action": "animate_scene",
+      "args": {
+        "scene_id": "plan_03",
+        "prompt": "Static camera. The shark waves its raised pectoral fin twice, then blinks once. Body stays still. [FIN VIDÉO]",
+        "fallback_animeeffects": "Nageoire ±25°, 2 allers-retours en dessins tenus 2 images ; clignement de 2 images."
+      }
+    },
+    {
+      "action": "apply_montage",
+      "args": {
+        "scene_id": "plan_03",
+        "instruction": "Avancée de +12 % en 0,4 s au début du plan."
+      }
+    },
+    {
+      "action": "create_scene",
+      "args": {
+        "scene_id": "plan_04",
+        "start": "00:08.3",
+        "end": "00:11.6",
+        "duration": 3.3,
+        "audio_text": "La plupart des gens l'imaginent comme une machine à tuer, assoiffée de sang."
+      }
+    },
+    {
+      "action": "generate_background",
+      "args": {
+        "scene_id": "plan_04",
+        "prompt": "[STYLE]. On a sunny beach, a small frightened [HUMAIN] at the bottom of the frame; above them a huge thought bubble with a dark red background containing a monstrous angular shark with glowing red eyes and a mouth full of sharp teeth. Cartoonish, not gory, no blood.",
+        "aspect_ratio": "9:16"
+      }
+    },
+    {
+      "action": "apply_montage",
+      "args": {
+        "scene_id": "plan_04",
+        "instruction": "Avancée de +20 % vers la bulle sur « machine » (≈ 10,1 s), en 0,8 s."
+      }
+    },
+    {
+      "action": "create_scene",
+      "args": {
+        "scene_id": "plan_05",
+        "start": "00:11.6",
+        "end": "00:13.5",
+        "duration": 1.9,
+        "audio_text": "Sauf que c'est complètement faux."
+      }
+    },
+    {
+      "action": "generate_background",
+      "args": {
+        "scene_id": "plan_05",
+        "prompt": "[STYLE]. Same beach composition as the previous image: the thought bubble has popped into a few flat cartoon fragments and a small puff cloud; the [HUMAIN] looks relieved.",
+        "aspect_ratio": "9:16"
+      }
+    },
+    {
+      "action": "apply_montage",
+      "args": {
+        "scene_id": "plan_05",
+        "instruction": "Coupe sèche depuis P4 (même cadrage, bulle éclatée). Secousse de 0,2 s à la coupe. Pictogramme croix rouge sur l'emplacement du monstre à « faux » (≈ 12,6 s), en rebond."
+      }
+    },
+    {
+      "action": "create_scene",
+      "args": {
+        "scene_id": "plan_06",
+        "start": "00:13.5",
+        "end": "00:16.2",
+        "duration": 2.7,
+        "audio_text": "Les requins existent depuis 400 millions d'années."
+      }
+    },
+    {
+      "action": "generate_background",
+      "args": {
+        "scene_id": "plan_06",
+        "prompt": "[STYLE]. Wide shot of a prehistoric deep blue sea floor with trilobites, strange sea ferns and spiral shells; an ancient slimmer version of the [REQUIN] swimming in the center, calm expression.",
+        "aspect_ratio": "9:16"
+      }
+    },
+    {
+      "action": "apply_montage",
+      "args": {
+        "scene_id": "plan_06",
+        "instruction": "Départ en gros plan sur le requin, recul de 40 % en 1,2 s dès la coupe. « 400 millions d'années » manuscrit sur « 400 » (≈ 14,6 s)."
+      }
+    },
+    {
+      "action": "create_scene",
+      "args": {
+        "scene_id": "plan_07",
+        "start": "00:16.2",
+        "end": "00:20.9",
+        "duration": 4.7,
+        "audio_text": "Ils ont traversé quatre extinctions massives et étaient déjà là avant la disparition des dinosaures,"
+      }
+    },
+    {
+      "action": "generate_background",
+      "args": {
+        "scene_id": "plan_07",
+        "prompt": "Fond : [STYLE]. Horizontal deep blue timeline strip with empty space, simple dark seabed line at the bottom. Requin : [STYLE]. Side view of the [REQUIN] swimming to the right, calm bored half-closed eyes. [CALQUE]. Pictogrammes : [STYLE]. Simple flat icon of an erupting volcano on a plain solid green background.",
+        "aspect_ratio": "9:16"
+      }
+    },
+    {
+      "action": "apply_montage",
+      "args": {
+        "scene_id": "plan_07",
+        "instruction": "Le calque requin traverse de gauche à droite à vitesse constante sur 4,5 s. Les 4 pictogrammes apparaissent entre « quatre » (≈ 17,0 s) et « massives » (≈ 17,8 s), un toutes les 0,25 s, en rebond. « 4 » manuscrit. Silhouette de dinosaure sur « dinosaures » (≈ 20,2 s)."
+      }
+    },
+    {
+      "action": "create_scene",
+      "args": {
+        "scene_id": "plan_08",
+        "start": "00:20.9",
+        "end": "00:23.0",
+        "duration": 2.1,
+        "audio_text": "il y a 66 millions d'années."
+      }
+    },
+    {
+      "action": "generate_background",
+      "args": {
+        "scene_id": "plan_08",
+        "prompt": "[STYLE]. In the foreground the [REQUIN]'s head sticks out of the water with bored half-closed eyes; on the shore in the background a panicked cartoon T-rex looks up at a flaming meteorite in an orange sky.",
+        "aspect_ratio": "9:16"
+      }
+    },
+    {
+      "action": "apply_montage",
+      "args": {
+        "scene_id": "plan_08",
+        "instruction": "« -66 millions d'années » manuscrit dès la coupe. Flash blanc de 2 images et secousse de 0,3 s à ≈ 22,6 s."
+      }
+    },
+    {
+      "action": "create_scene",
+      "args": {
+        "scene_id": "plan_09",
+        "start": "00:23.0",
+        "end": "00:27.3",
+        "duration": 4.3,
+        "audio_text": "Mais le plus dingue, c'est qu'ils jouent aussi un rôle essentiel dans l'équilibre des océans,"
+      }
+    },
+    {
+      "action": "generate_background",
+      "args": {
+        "scene_id": "plan_09",
+        "prompt": "[STYLE]. Wide underwater shot of a bright coral reef with small fish, two sea turtles and a green seagrass meadow; the [REQUIN] swims proudly in the center.",
+        "aspect_ratio": "9:16"
+      }
+    },
+    {
+      "action": "apply_montage",
+      "args": {
+        "scene_id": "plan_09",
+        "instruction": "Départ en gros plan sur le requin (recadrage 2×), tenue. Recul de 55 % sur « équilibre » (≈ 26,2 s) en 0,8 s. Pictogramme balance à l'équilibre au-dessus du requin sur « équilibre », en rebond."
+      }
+    },
+    {
+      "action": "create_scene",
+      "args": {
+        "scene_id": "plan_10",
+        "start": "00:27.3",
+        "end": "00:31.1",
+        "duration": 3.8,
+        "audio_text": "pour préserver les herbiers marins et les récifs coralliens."
+      }
+    },
+    {
+      "action": "generate_background",
+      "args": {
+        "scene_id": "plan_10",
+        "prompt": "Image composée : [STYLE]. Underwater seagrass meadow in front of a coral reef; two cartoon sea turtles with mouths open about to eat the seagrass; the [REQUIN] entering from the right edge.",
+        "aspect_ratio": "9:16"
+      }
+    },
+    {
+      "action": "animate_scene",
+      "args": {
+        "scene_id": "plan_10",
+        "prompt": "Static camera. The shark swims slowly from right to left across the frame; as it passes, the two turtles stop, then turn and swim away toward the edges; the seagrass sways gently. [FIN VIDÉO]",
+        "fallback_animeeffects": "Requin de droite à gauche en 2 s ; tortues immobiles 3 images puis fuite vers les bords ; herbes en déformation, cycle de 1 s."
+      }
+    },
+    {
+      "action": "apply_montage",
+      "args": {
+        "scene_id": "plan_10",
+        "instruction": "« herbiers marins » manuscrit (≈ 28,4 s), puis « récifs coralliens » (≈ 29,8 s)."
+      }
+    },
+    {
+      "action": "create_scene",
+      "args": {
+        "scene_id": "plan_11",
+        "start": "00:31.1",
+        "end": "00:34.3",
+        "duration": 3.2,
+        "audio_text": "Aujourd'hui, il existe plus de 500 espèces de requins,"
+      }
+    },
+    {
+      "action": "generate_background",
+      "args": {
+        "scene_id": "plan_11",
+        "prompt": "[STYLE]. Huge crowd of many different cartoon shark species of all shapes and sizes packed together underwater, all in the same simple style, the [REQUIN] in the exact center.",
+        "aspect_ratio": "9:16"
+      }
+    },
+    {
+      "action": "apply_montage",
+      "args": {
+        "scene_id": "plan_11",
+        "instruction": "Départ en gros plan sur le requin central, recul de 60 % en 1,5 s. « + de 500 espèces » manuscrit sur « 500 » (≈ 32,6 s)."
+      }
+    },
+    {
+      "action": "create_scene",
+      "args": {
+        "scene_id": "plan_12",
+        "start": "00:34.3",
+        "end": "00:38.7",
+        "duration": 4.4,
+        "audio_text": "mais seulement cinq sont présentées ici comme réellement dangereuses pour l'homme :"
+      }
+    },
+    {
+      "action": "reuse_scene_assets",
+      "args": {
+        "scene_id": "plan_12",
+        "instruction": "Réutiliser l'image P11."
+      }
+    },
+    {
+      "action": "apply_montage",
+      "args": {
+        "scene_id": "plan_12",
+        "instruction": "Sur « cinq » (≈ 35,0 s), fondu de 0,4 s vers une version assombrie à -60 % ; 5 requins détourés restent éclairés, avec un contour rouge. « 5 » rouge manuscrit sur « dangereuses » (≈ 37,2 s)."
+      }
+    },
+    {
+      "action": "create_scene",
+      "args": {
+        "scene_id": "plan_13",
+        "start": "00:38.7",
+        "end": "00:45.3",
+        "duration": 6.6,
+        "audio_text": "le requin tigre, le requin bouledogue et le grand requin-marteau, le grand blanc et le requin océanique."
+      }
+    },
+    {
+      "action": "generate_background",
+      "args": {
+        "scene_id": "plan_13",
+        "prompt": "Portraits individuels pour chaque espèce.",
+        "aspect_ratio": "9:16"
+      }
+    },
+    {
+      "action": "apply_montage",
+      "args": {
+        "scene_id": "plan_13",
+        "instruction": "Coupe sèche sur chaque nom. Avancée de +8 % sur la durée de chaque carte. Nom de l'espèce manuscrit en haut et compteur « 1/5 » à « 5/5 »."
+      }
+    },
+    {
+      "action": "create_scene",
+      "args": {
+        "scene_id": "plan_14",
+        "start": "00:45.3",
+        "end": "00:47.2",
+        "duration": 1.9,
+        "audio_text": "Et là, ça devient intéressant."
+      }
+    },
+    {
+      "action": "generate_background",
+      "args": {
+        "scene_id": "plan_14",
+        "prompt": "[STYLE]. Extreme close-up of the [REQUIN]'s face, one eyebrow raised, sly knowing look, plain dark blue background.",
+        "aspect_ratio": "9:16"
+      }
+    },
+    {
+      "action": "apply_montage",
+      "args": {
+        "scene_id": "plan_14",
+        "instruction": "Avancée de +20 % en 0,3 s au début."
+      }
+    },
+    {
+      "action": "create_scene",
+      "args": {
+        "scene_id": "plan_15",
+        "start": "00:47.2",
+        "end": "00:49.6",
+        "duration": 2.4,
+        "audio_text": "Selon l'International Shark Attack File,"
+      }
+    },
+    {
+      "action": "generate_background",
+      "args": {
+        "scene_id": "plan_15",
+        "prompt": "[STYLE]. A [HUMAIN] wearing a white lab coat opening a tall filing cabinet drawer full of folders in a simple archive room, plain beige walls.",
+        "aspect_ratio": "9:16"
+      }
+    },
+    {
+      "action": "apply_montage",
+      "args": {
+        "scene_id": "plan_15",
+        "instruction": "Recul de 30 % en 0,8 s. « International Shark Attack File » manuscrit sur « International » (≈ 47,7 s)."
+      }
+    },
+    {
+      "action": "create_scene",
+      "args": {
+        "scene_id": "plan_16",
+        "start": "00:49.6",
+        "end": "00:54.5",
+        "duration": 4.9,
+        "audio_text": "environ 64 attaques sont rapportées chaque année dans le monde, pour seulement quatre morts."
+      }
+    },
+    {
+      "action": "generate_background",
+      "args": {
+        "scene_id": "plan_16",
+        "prompt": "[STYLE]. Simple flat world map, pale blue oceans and sand-colored continents, no labels, no borders.",
+        "aspect_ratio": "9:16"
+      }
+    },
+    {
+      "action": "apply_montage",
+      "args": {
+        "scene_id": "plan_16",
+        "instruction": "Points jaunes qui apparaissent en rafale le long des côtes (≈ 50,0 → 51,5 s), avec « 64 / an » manuscrit. 4 points passent au rouge avec « 4 morts » sur « quatre morts » (≈ 53,2 s)."
+      }
+    },
+    {
+      "action": "create_scene",
+      "args": {
+        "scene_id": "plan_17",
+        "start": "00:54.5",
+        "end": "00:55.4",
+        "duration": 0.9,
+        "audio_text": "Mais attends."
+      }
+    },
+    {
+      "action": "generate_background",
+      "args": {
+        "scene_id": "plan_17",
+        "prompt": "[STYLE]. Close-up of the [REQUIN] facing the camera, holding up one pectoral fin like a stop sign, eyes wide, plain yellow background.",
+        "aspect_ratio": "9:16"
+      }
+    },
+    {
+      "action": "apply_montage",
+      "args": {
+        "scene_id": "plan_17",
+        "instruction": "Avancée brusque de +15 % en 0,2 s dès la coupe."
+      }
+    },
+    {
+      "action": "create_scene",
+      "args": {
+        "scene_id": "plan_18",
+        "start": "00:55.4",
+        "end": "00:59.8",
+        "duration": 4.4,
+        "audio_text": "Chaque année, 30 personnes mourraient à cause de fourmis rouges"
+      }
+    },
+    {
+      "action": "generate_background",
+      "args": {
+        "scene_id": "plan_18",
+        "prompt": "[STYLE]. A picnic blanket on green grass with a basket; on the left a line of five oversized cartoon red fire ants with angry eyebrows marching to the right; on the right a frightened [HUMAIN] with arms raised.",
+        "aspect_ratio": "9:16"
+      }
+    },
+    {
+      "action": "animate_scene",
+      "args": {
+        "scene_id": "plan_18",
+        "prompt": "Static camera. The line of giant red ants marches toward the person; the person pauses briefly, then takes one step back in fear with arms raised. [FIN VIDÉO]",
+        "fallback_animeeffects": "Fourmis qui avancent par pas de 2 images avec 2 poses de pattes alternées ; recul de l'humain avec anticipation de 3 images."
+      }
+    },
+    {
+      "action": "apply_montage",
+      "args": {
+        "scene_id": "plan_18",
+        "instruction": "« 30 » manuscrit sur « 30 » (≈ 56,2 s)."
+      }
+    },
+    {
+      "action": "create_scene",
+      "args": {
+        "scene_id": "plan_19",
+        "start": "00:59.8",
+        "end": "01:01.8",
+        "duration": 2.0,
+        "audio_text": "et 150 à cause de chutes de noix de coco."
+      }
+    },
+    {
+      "action": "generate_background",
+      "args": {
+        "scene_id": "plan_19",
+        "prompt": "[STYLE]. Sunny beach with one tall leaning coconut palm; a [HUMAIN] standing under it looking at a phone, unaware; one brown coconut hanging at the top of the palm.",
+        "aspect_ratio": "9:16"
+      }
+    },
+    {
+      "action": "animate_scene",
+      "args": {
+        "scene_id": "plan_19",
+        "prompt": "Static camera. The coconut falls from the palm and bonks the person on the head; the person squashes down slightly and cartoon stars spin around their head. No blood. [FIN VIDÉO]",
+        "fallback_animeeffects": "Chute en 4 images avec étirement vertical ; impact en tassement de 2 images ; l'humain s'écrase de 15 % puis revient ; étoiles en 2 poses alternées."
+      }
+    },
+    {
+      "action": "apply_montage",
+      "args": {
+        "scene_id": "plan_19",
+        "instruction": "Secousse de 0,2 s à l'impact. « 150 » manuscrit (≈ 59,9 s)."
+      }
+    },
+    {
+      "action": "create_scene",
+      "args": {
+        "scene_id": "plan_20",
+        "start": "01:01.8",
+        "end": "01:06.0",
+        "duration": 4.2,
+        "audio_text": "Donc oui, selon ces chiffres, une noix de coco serait plus dangereuse qu'un requin."
+      }
+    },
+    {
+      "action": "generate_background",
+      "args": {
+        "scene_id": "plan_20",
+        "prompt": "[STYLE]. A golden cartoon balance scale on a plain pale turquoise background; on the left pan a coconut with angry eyebrows, on the right pan the [REQUIN] sitting with a big innocent smile; the scale is level.",
+        "aspect_ratio": "9:16"
+      }
+    },
+    {
+      "action": "animate_scene",
+      "args": {
+        "scene_id": "plan_20",
+        "prompt": "Static camera. The balance scale slowly tips down on the coconut side with a small bounce; the shark on the raised pan blinks innocently. [FIN VIDÉO]",
+        "fallback_animeeffects": "Fléau de 0° à -18° en 6 images avec dépassement (courbe « Back ») sur « plus » (≈ 64,2 s) ; clignement du requin."
+      }
+    },
+    {
+      "action": "apply_montage",
+      "args": {
+        "scene_id": "plan_20",
+        "instruction": "Départ en gros plan sur la balance, recul de 40 % en 1 s dès la coupe."
+      }
+    },
+    {
+      "action": "create_scene",
+      "args": {
+        "scene_id": "plan_21",
+        "start": "01:06.0",
+        "end": "01:09.5",
+        "duration": 3.5,
+        "audio_text": "Mais le vrai prédateur de cette histoire, ce n'est pas lui."
+      }
+    },
+    {
+      "action": "generate_background",
+      "args": {
+        "scene_id": "plan_21",
+        "prompt": "[STYLE]. The [REQUIN] alone in a round spotlight on a pitch black background, serious eyes.",
+        "aspect_ratio": "9:16"
+      }
+    },
+    {
+      "action": "apply_montage",
+      "args": {
+        "scene_id": "plan_21",
+        "instruction": "Sur « pas lui » (≈ 68,7 s), le cercle de lumière glisse vers la droite hors du requin (masque animé de 0,4 s, le requin passe dans le noir)."
+      }
+    },
+    {
+      "action": "create_scene",
+      "args": {
+        "scene_id": "plan_22",
+        "start": "01:09.5",
+        "end": "01:10.4",
+        "duration": 0.9,
+        "audio_text": "C'est nous."
+      }
+    },
+    {
+      "action": "generate_background",
+      "args": {
+        "scene_id": "plan_22",
+        "prompt": "[STYLE]. A [HUMAIN] fisherman standing in a small boat in a round spotlight on a black background, holding a big fishing hook, guilty sideways glance. No blood.",
+        "aspect_ratio": "9:16"
+      }
+    },
+    {
+      "action": "apply_montage",
+      "args": {
+        "scene_id": "plan_22",
+        "instruction": "Avancée brusque de +20 % en 0,2 s et secousse légère dès la coupe."
+      }
+    },
+    {
+      "action": "create_scene",
+      "args": {
+        "scene_id": "plan_23",
+        "start": "01:10.4",
+        "end": "01:13.9",
+        "duration": 3.5,
+        "audio_text": "Chaque année, les humains tuent environ 80 millions de requins"
+      }
+    },
+    {
+      "action": "generate_background",
+      "args": {
+        "scene_id": "plan_23",
+        "prompt": "[STYLE]. Wide shot of a desaturated grey sea crowded with dozens of fishing boats and long nets stretching to the horizon, overcast grey sky, muted colors. No blood, no dead animals visible.",
+        "aspect_ratio": "9:16"
+      }
+    },
+    {
+      "action": "apply_montage",
+      "args": {
+        "scene_id": "plan_23",
+        "instruction": "Départ sur un seul bateau (recadrage 3×), recul de 65 % en 1,5 s. « 80 000 000 » manuscrit sur « 80 » (≈ 72,2 s)."
+      }
+    },
+    {
+      "action": "create_scene",
+      "args": {
+        "scene_id": "plan_24",
+        "start": "01:13.9",
+        "end": "01:17.8",
+        "duration": 3.9,
+        "audio_text": "pour leurs ailerons utilisés en médecine traditionnelle et dans des soupes."
+      }
+    },
+    {
+      "action": "generate_background",
+      "args": {
+        "scene_id": "plan_24",
+        "prompt": "3 pictogrammes (bol de soupe, aileron, flacon/remède).",
+        "aspect_ratio": "9:16"
+      }
+    },
+    {
+      "action": "apply_montage",
+      "args": {
+        "scene_id": "plan_24",
+        "instruction": "Fond gris uni. Pictogrammes en rangée, chacun en rebond sur son mot."
+      }
+    },
+    {
+      "action": "create_scene",
+      "args": {
+        "scene_id": "plan_25",
+        "start": "01:17.8",
+        "end": "01:23.0",
+        "duration": 5.2,
+        "audio_text": "Et finalement, le monstre qu'on craignait depuis le début n'était peut-être pas celui qu'on pensait."
+      }
+    },
+    {
+      "action": "generate_background",
+      "args": {
+        "scene_id": "plan_25",
+        "prompt": "[STYLE]. Pale turquoise underwater scene; at the bottom the [REQUIN] trembling with fear and big wet eyes; above it a huge thought bubble with a dark red background containing a monstrous cartoon human with glowing red eyes holding a giant fishing hook. Cartoonish, not gory.",
+        "aspect_ratio": "9:16"
+      }
+    },
+    {
+      "action": "animate_scene",
+      "args": {
+        "scene_id": "plan_25",
+        "prompt": "Static camera. The shark trembles with fear, then slowly turns its eyes toward the camera. The thought bubble stays still. [FIN VIDÉO]",
+        "fallback_animeeffects": "Tremblement de ±2 px en dessins tenus 2 images ; pupilles vers la caméra sur « pas » (≈ 81,5 s)."
+      }
+    },
+    {
+      "action": "apply_montage",
+      "args": {
+        "scene_id": "plan_25",
+        "instruction": "Départ en gros plan sur la bulle, recul de 50 % sur « monstre » (≈ 78,7 s) en 1 s. Tenue jusqu'à la fin."
+      }
+    },
+    {
+      "action": "sync_to_audio",
+      "args": {
+        "duration_seconds": 83.0,
+        "mode": "timecode_locked"
+      }
+    },
+    {
+      "action": "preview_animation",
+      "args": {
+        "resolution": "1080x1920"
+      }
+    },
+    {
+      "action": "export_animation",
+      "args": {
+        "format": "mp4",
+        "resolution": "1080x1920",
+        "quality": "high"
+      }
+    }
+  ]
+}

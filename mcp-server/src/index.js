@@ -1,0 +1,20 @@
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { z } from 'zod';
+import { callApi, asContent } from './toolDefinitions.js';
+const s=new McpServer({name:'flipaclip-animation-agent',version:'1.0.0'});
+const projectFrame={project_id:z.string(),frame_id:z.string()};
+s.tool('generate_character','Generate a reusable character asset',{prompt:z.string()},async({prompt})=>asContent(await callApi('/api/generate/character',{method:'POST',body:{prompt}})));
+s.tool('generate_object','Generate a reusable object asset',{prompt:z.string()},async({prompt})=>asContent(await callApi('/api/generate/object',{method:'POST',body:{prompt}})));
+s.tool('generate_background','Generate a reusable background asset',{prompt:z.string()},async({prompt})=>asContent(await callApi('/api/generate/background',{method:'POST',body:{prompt}})));
+s.tool('create_frame','Create a frame',{project_id:z.string(),duration_ms:z.number().optional()},async({project_id,duration_ms})=>asContent(await callApi(`/api/projects/${project_id}/frames`,{method:'POST',body:{duration_ms}})));
+s.tool('duplicate_frame','Duplicate a frame',projectFrame,async({project_id,frame_id})=>asContent(await callApi(`/api/projects/${project_id}/frames/${frame_id}/duplicate`,{method:'POST'})));
+s.tool('delete_frame','Delete a frame',projectFrame,async({project_id,frame_id})=>{await callApi(`/api/projects/${project_id}/frames/${frame_id}`,{method:'DELETE'});return asContent({ok:true})});
+s.tool('reorder_frames','Reorder frames',{project_id:z.string(),frame_ids:z.array(z.string())},async({project_id,frame_ids})=>asContent(await callApi(`/api/projects/${project_id}/frames/reorder`,{method:'PUT',body:{frame_ids}})));
+for(const [name,key] of [['move_element','position'],['rotate_element','rotation'],['scale_element','scale'],['set_layer_order','layer_order'],['toggle_layer_visibility','visible']]){s.tool(name,`Update element ${key}`,{project_id:z.string(),frame_id:z.string(),element_id:z.string(),x:z.number().optional(),y:z.number().optional(),rotation:z.number().optional(),scale:z.number().optional(),layer_order:z.number().optional(),visible:z.boolean().optional()},async args=>{const {project_id,frame_id,element_id,...patch}=args;return asContent(await callApi(`/api/projects/${project_id}/frames/${frame_id}/elements/${element_id}`,{method:'PATCH',body:patch}))});}
+s.tool('create_layer','Create element/layer',{project_id:z.string(),frame_id:z.string(),type:z.string(),image_ref:z.string().optional(),x:z.number().optional(),y:z.number().optional(),layer_order:z.number().optional()},async({project_id,frame_id,...body})=>asContent(await callApi(`/api/projects/${project_id}/frames/${frame_id}/elements`,{method:'POST',body})));
+s.tool('inpaint_region','Register an inpainting operation',{image_ref:z.string(),prompt:z.string(),mask:z.any().optional()},async body=>asContent(await callApi('/api/inpaint',{method:'POST',body})));
+for(const name of ['add_transition','apply_effect','add_audio_track','sync_to_audio'])s.tool(name,`${name} metadata helper`,{project_id:z.string(),payload:z.any().optional()},async({project_id,payload})=>asContent({status:'accepted-as-metadata',project_id,operation:name,payload}));
+s.tool('preview_animation','Preview project',{project_id:z.string()},async({project_id})=>asContent(await callApi(`/api/projects/${project_id}/preview`)));
+s.tool('export_animation','Export project manifest',{project_id:z.string(),format:z.string().optional()},async({project_id,format})=>asContent(await callApi(`/api/projects/${project_id}/export`,{method:'POST',body:{format}})));
+const transport=new StdioServerTransport();await s.connect(transport);

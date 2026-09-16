@@ -1,0 +1,2 @@
+import { spawnSync } from 'node:child_process';
+const suites=[['backend',['--workspace','backend','test']],['frontend',['--workspace','frontend','test']],['mcp-server',['--workspace','mcp-server','test']]];let failed=false;for(const [name,args] of suites){console.log(`\n== ${name} ==`);const r=spawnSync('npm',args,{stdio:'inherit',shell:process.platform==='win32'});if(r.status!==0)failed=true}process.exitCode=failed?1:0;

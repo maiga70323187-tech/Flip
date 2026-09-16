@@ -1,0 +1,24 @@
+FlipaClip Animation MCP — résultats de validation
+Date: 2026-09-16
+
+Validation structure:
+- README: OK
+- backend/src/app.js: OK
+- frontend/src/App.jsx: OK
+- mcp-server/src/index.js: OK
+- input/storyboard/storyboard.json: OK
+- audio MP3: OK
+- transcription SRT: OK
+- storyboard: 25 plans
+
+Tests autonomes exécutés avec Node.js v22.16.0:
+- backend/tests/model.test.js: PASS (3)
+- backend/tests/store.test.js: PASS (1)
+- frontend/tests/time.test.mjs: PASS (3)
+- mcp-server/tests/tools.test.js: PASS (1)
+TOTAL: 8 PASS / 0 FAIL
+
+Non exécuté dans cet environnement:
+- backend/tests/api.test.js (nécessite l'installation des dépendances npm Express/CORS/Multer).
+- build Vite et démarrage réel du SDK MCP (nécessitent npm install).
+La commande npm install a dépassé la limite d'exécution de l'environnement; aucun échec fonctionnel du code n'a été déduit de ce timeout.
