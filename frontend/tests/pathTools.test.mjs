@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { simplify, toBezierPath, anchorsToD, makeSmoothAnchor, makeCornerAnchor } from '../src/lib/pathTools.js';
+import { simplify, toBezierPath, anchorsToD, makeSmoothAnchor, makeCornerAnchor, nearestOnPath, splitCubic } from '../src/lib/pathTools.js';
 
 test('simplify keeps endpoints and drops collinear midpoints', () => {
   const pts = [[0,0],[1,0.1],[2,0.05],[3,0],[10,0]];
@@ -37,4 +37,23 @@ test('anchorsToD with smooth anchors uses C segments', () => {
 
 test('anchorsToD empty input returns empty string', () => {
   assert.equal(anchorsToD([], false), '');
+});
+
+test('nearestOnPath finds a point close to a straight segment', () => {
+  const anchors = [makeCornerAnchor(0, 0), makeCornerAnchor(100, 0)];
+  const hit = nearestOnPath(anchors, false, 50, 1);
+  assert.ok(hit);
+  assert.equal(hit.segmentIndex, 0);
+  assert.ok(hit.distance < 4);
+  assert.ok(Math.abs(hit.x - 50) < 5);
+});
+
+test('splitCubic preserves endpoints', () => {
+  const a = makeSmoothAnchor(0, 0, 30, 0);
+  const b = { x: 100, y: 0, hIn: [-30, 0], hOut: null };
+  const { aHOut, newAnchor, bHIn } = splitCubic(a, b, 0.5);
+  assert.ok(Array.isArray(aHOut) && aHOut.length === 2);
+  assert.ok(Array.isArray(bHIn) && bHIn.length === 2);
+  // Le nouveau point est sur la courbe, entre a et b sur l'axe X.
+  assert.ok(newAnchor.x > 20 && newAnchor.x < 80);
 });

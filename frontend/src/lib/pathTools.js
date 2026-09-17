@@ -89,3 +89,56 @@ export function makeSmoothAnchor(x, y, dx, dy) {
 export function makeCornerAnchor(x, y) {
   return { x, y, hIn: null, hOut: null };
 }
+
+// Divise une courbe de Bézier cubique au paramètre t (de Casteljau).
+// Renvoie les 2 nouvelles poignées et le point milieu, à insérer entre les deux ancres.
+export function splitCubic(a, b, t) {
+  const p0 = [a.x, a.y];
+  const p1 = [a.x + (a.hOut?.[0] ?? 0), a.y + (a.hOut?.[1] ?? 0)];
+  const p2 = [b.x + (b.hIn?.[0] ?? 0), b.y + (b.hIn?.[1] ?? 0)];
+  const p3 = [b.x, b.y];
+  const lerp = (p, q, u) => [p[0] + (q[0] - p[0]) * u, p[1] + (q[1] - p[1]) * u];
+  const q0 = lerp(p0, p1, t);
+  const q1 = lerp(p1, p2, t);
+  const q2 = lerp(p2, p3, t);
+  const r0 = lerp(q0, q1, t);
+  const r1 = lerp(q1, q2, t);
+  const s  = lerp(r0, r1, t);
+  return {
+    aHOut: [q0[0] - a.x, q0[1] - a.y],
+    newAnchor: { x: s[0], y: s[1], hIn: [r0[0] - s[0], r0[1] - s[1]], hOut: [r1[0] - s[0], r1[1] - s[1]] },
+    bHIn: [q2[0] - b.x, q2[1] - b.y],
+  };
+}
+
+// Trouve le point le plus proche d'une position (px, py) sur un tracé formé d'ancres,
+// en échantillonnant chaque segment. Renvoie { segmentIndex, t, distance } ou null.
+export function nearestOnPath(anchors, closed, px, py, samples = 24) {
+  if (!anchors || anchors.length < 2) return null;
+  const end = closed ? anchors.length : anchors.length - 1;
+  let best = null;
+  for (let i = 0; i < end; i++) {
+    const a = anchors[i];
+    const b = anchors[(i + 1) % anchors.length];
+    for (let k = 1; k < samples; k++) {
+      const t = k / samples;
+      const p = sampleCubic(a, b, t);
+      const dx = p[0] - px, dy = p[1] - py;
+      const d = dx * dx + dy * dy;
+      if (!best || d < best.distance) best = { segmentIndex: i, t, distance: d, x: p[0], y: p[1] };
+    }
+  }
+  return best;
+}
+
+function sampleCubic(a, b, t) {
+  const p0 = [a.x, a.y];
+  const p1 = [a.x + (a.hOut?.[0] ?? 0), a.y + (a.hOut?.[1] ?? 0)];
+  const p2 = [b.x + (b.hIn?.[0] ?? 0), b.y + (b.hIn?.[1] ?? 0)];
+  const p3 = [b.x, b.y];
+  const u = 1 - t;
+  return [
+    u*u*u*p0[0] + 3*u*u*t*p1[0] + 3*u*t*t*p2[0] + t*t*t*p3[0],
+    u*u*u*p0[1] + 3*u*u*t*p1[1] + 3*u*t*t*p2[1] + t*t*t*p3[1],
+  ];
+}

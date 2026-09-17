@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { resolveShape } from '../lib/interpolate.js';
-import { simplify, toBezierPath, anchorsToD, makeSmoothAnchor, makeCornerAnchor } from '../lib/pathTools.js';
+import { simplify, toBezierPath, anchorsToD, makeSmoothAnchor, makeCornerAnchor, nearestOnPath, splitCubic } from '../lib/pathTools.js';
 
 function ShapeSvg({ shape, t_ms, ghost }) {
   const { transform, style, props } = resolveShape(shape, t_ms);
@@ -66,6 +66,7 @@ export function Stage({ project, t_ms, onSelectShape, selectedId, tool, drawColo
   const [penDragging, setPenDragging] = useState(null);   // {index, startX, startY} — drag pour poser la poignée
   const [penHover, setPenHover] = useState(null);         // curseur en mode stylo pour preview live
   const [anchorDrag, setAnchorDrag] = useState(null);     // édition d'un tracé sélectionné
+  const [handleDrag, setHandleDrag] = useState(null);     // édition d'une poignée hIn/hOut d'un tracé sélectionné
 
   useEffect(() => { setPan({ x: 0, y: 0 }); setZoom(1); }, [project?.id]);
   useEffect(() => { setPenAnchors([]); setPenDragging(null); }, [tool, activeVectorLayerId, project?.id]);
@@ -122,7 +123,7 @@ export function Stage({ project, t_ms, onSelectShape, selectedId, tool, drawColo
     const [x, y] = clientToSvg(e);
 
     if (tool === 'pen') {
-      // Clic sur le premier point => fermer
+      // Clic sur le premier point du tracé en cours => fermer
       if (penAnchors.length >= 2) {
         const first = penAnchors[0];
         const dx = x - first.x, dy = y - first.y;
@@ -130,6 +131,11 @@ export function Stage({ project, t_ms, onSelectShape, selectedId, tool, drawColo
           finishPen(true);
           return;
         }
+      }
+      // Aucun tracé en cours + un tracé sélectionné => tenter l'insertion d'ancre
+      if (penAnchors.length === 0 && selectedId) {
+        const inserted = tryInsertAnchor(x, y);
+        if (inserted) return;
       }
       const newAnchor = e.altKey ? makeCornerAnchor(x, y) : { x, y, hIn: null, hOut: null };
       const idx = penAnchors.length;
@@ -181,6 +187,23 @@ export function Stage({ project, t_ms, onSelectShape, selectedId, tool, drawColo
       const next = shape.props.anchors.map((a, i) => i === anchorDrag.index ? { ...a, x: lx, y: ly } : a);
       onEditAnchors?.({ layer_id: anchorDrag.layer_id, shape, anchors: next, phase: 'move' });
     }
+    if (handleDrag) {
+      const shape = handleDrag.shape;
+      const { transform } = resolveShape(shape, t_ms);
+      const a = shape.props.anchors[handleDrag.index];
+      const dx = (x - transform.x) - a.x;
+      const dy = (y - transform.y) - a.y;
+      const mirror = !e.altKey;
+      const next = shape.props.anchors.map((anc, i) => {
+        if (i !== handleDrag.index) return anc;
+        if (handleDrag.which === 'out') {
+          return { ...anc, hOut: [dx, dy], hIn: mirror ? [-dx, -dy] : anc.hIn };
+        } else {
+          return { ...anc, hIn: [dx, dy], hOut: mirror ? [-dx, -dy] : anc.hOut };
+        }
+      });
+      onEditAnchors?.({ layer_id: handleDrag.layer_id, shape, anchors: next, phase: 'move' });
+    }
   };
 
   const onMouseUp = (e) => {
@@ -189,6 +212,7 @@ export function Stage({ project, t_ms, onSelectShape, selectedId, tool, drawColo
     if (drawing) { commitDrawing(); return setDrawing(null); }
     if (dragging) { onDragTransform?.({ ...dragging, phase: 'end' }); setDragging(null); }
     if (anchorDrag) { onEditAnchors?.({ ...anchorDrag, phase: 'end' }); setAnchorDrag(null); }
+    if (handleDrag) { onEditAnchors?.({ ...handleDrag, phase: 'end' }); setHandleDrag(null); }
   };
 
   function commitDrawing() {
@@ -224,7 +248,62 @@ export function Stage({ project, t_ms, onSelectShape, selectedId, tool, drawColo
 
   const startAnchorDrag = (shape, layer_id, index, e) => {
     e.stopPropagation();
+    if (e.altKey) {
+      // Alt+clic => bascule lisse/anguleux
+      const a = shape.props.anchors[index];
+      const isSmooth = a.hIn || a.hOut;
+      let next;
+      if (isSmooth) {
+        next = shape.props.anchors.map((x, i) => i === index ? { ...x, hIn: null, hOut: null } : x);
+      } else {
+        // recalcule des poignées à partir des voisins
+        const anchors = shape.props.anchors;
+        const prev = anchors[(index - 1 + anchors.length) % anchors.length];
+        const nx = anchors[(index + 1) % anchors.length];
+        const dx = (nx.x - prev.x) / 6;
+        const dy = (nx.y - prev.y) / 6;
+        next = anchors.map((x, i) => i === index ? { ...x, hIn: [-dx, -dy], hOut: [dx, dy] } : x);
+      }
+      onEditAnchors?.({ layer_id, shape, anchors: next, phase: 'end' });
+      return;
+    }
     setAnchorDrag({ shape, layer_id, index });
+  };
+
+  const removeAnchor = (shape, layer_id, index, e) => {
+    e.stopPropagation();
+    if (shape.props.anchors.length <= 2) return;
+    const next = shape.props.anchors.filter((_, i) => i !== index);
+    onEditAnchors?.({ layer_id, shape, anchors: next, phase: 'end' });
+  };
+
+  const startHandleDrag = (shape, layer_id, index, which, e) => {
+    e.stopPropagation();
+    setHandleDrag({ shape, layer_id, index, which });
+  };
+
+  const tryInsertAnchor = (px, py) => {
+    for (const l of project.layers) {
+      if (l.kind !== 'vector' || !l.visible) continue;
+      const s = l.shapes?.find(x => x.id === selectedId);
+      if (!s || s.type !== 'path' || !Array.isArray(s.props?.anchors)) continue;
+      const { transform } = resolveShape(s, t_ms);
+      const lx = px - transform.x, ly = py - transform.y;
+      const hit = nearestOnPath(s.props.anchors, s.props.closed, lx, ly);
+      if (!hit) continue;
+      const threshold = (12 / zoom) ** 2;
+      if (hit.distance > threshold) continue;
+      const a = s.props.anchors[hit.segmentIndex];
+      const b = s.props.anchors[(hit.segmentIndex + 1) % s.props.anchors.length];
+      const { aHOut, newAnchor, bHIn } = splitCubic(a, b, hit.t);
+      const next = s.props.anchors.slice();
+      next[hit.segmentIndex] = { ...a, hOut: aHOut };
+      next[(hit.segmentIndex + 1) % next.length] = { ...b, hIn: bHIn };
+      next.splice(hit.segmentIndex + 1, 0, newAnchor);
+      onEditAnchors?.({ layer_id: l.id, shape: s, anchors: next, phase: 'end' });
+      return true;
+    }
+    return false;
   };
 
   const onionOffsets = useMemo(() => onionSkin ? [-2, -1, 1, 2].map(k => k * (1000 / (project?.fps ?? 24))) : [], [onionSkin, project?.fps]);
@@ -336,7 +415,17 @@ export function Stage({ project, t_ms, onSelectShape, selectedId, tool, drawColo
                 <g key={i}>
                   {a.hOut && <line x1={a.x} y1={a.y} x2={a.x + a.hOut[0]} y2={a.y + a.hOut[1]} stroke="#0af" strokeWidth={1 / zoom} pointerEvents="none"/>}
                   {a.hIn && <line x1={a.x} y1={a.y} x2={a.x + a.hIn[0]} y2={a.y + a.hIn[1]} stroke="#0af" strokeWidth={1 / zoom} pointerEvents="none"/>}
-                  <circle cx={a.x} cy={a.y} r={5 / zoom} fill="#fff" stroke="#0af" strokeWidth={1.5 / zoom} style={{ cursor: 'grab' }} onMouseDown={(e) => startAnchorDrag(editableAnchors.s, editableAnchors.layer_id, i, e)}/>
+                  {a.hOut && (
+                    <circle cx={a.x + a.hOut[0]} cy={a.y + a.hOut[1]} r={3.5 / zoom} fill="#0af" stroke="#fff" strokeWidth={1 / zoom} style={{ cursor: 'grab' }}
+                      onMouseDown={(e) => startHandleDrag(editableAnchors.s, editableAnchors.layer_id, i, 'out', e)}/>
+                  )}
+                  {a.hIn && (
+                    <circle cx={a.x + a.hIn[0]} cy={a.y + a.hIn[1]} r={3.5 / zoom} fill="#0af" stroke="#fff" strokeWidth={1 / zoom} style={{ cursor: 'grab' }}
+                      onMouseDown={(e) => startHandleDrag(editableAnchors.s, editableAnchors.layer_id, i, 'in', e)}/>
+                  )}
+                  <rect x={a.x - 5 / zoom} y={a.y - 5 / zoom} width={10 / zoom} height={10 / zoom} fill="#fff" stroke="#0af" strokeWidth={1.5 / zoom} style={{ cursor: 'grab' }}
+                    onMouseDown={(e) => startAnchorDrag(editableAnchors.s, editableAnchors.layer_id, i, e)}
+                    onDoubleClick={(e) => removeAnchor(editableAnchors.s, editableAnchors.layer_id, i, e)}/>
                 </g>
               ))}
             </g>
@@ -363,7 +452,8 @@ export function Stage({ project, t_ms, onSelectShape, selectedId, tool, drawColo
       <div className="stage-hud">
         <span>{Math.round(zoom * 100)}%</span>
         <button onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}>Recadrer</button>
-        {tool === 'pen' && <span className="hint">Clic = point · Clic-glisser = courbe · Alt+clic = coin · clic sur 1er point = fermer · Entrée/Échap = terminer</span>}
+        {tool === 'pen' && <span className="hint">Clic = point · Clic-glisser = courbe · Alt+clic = coin · clic sur 1er point = fermer · clic sur segment sélectionné = insérer · Entrée/Échap = terminer</span>}
+        {tool === 'select' && editableAnchors && <span className="hint">Drag point = déplacer · Drag poignée = courbure · Alt+drag poignée = casser la symétrie · Alt+clic point = lisse/coin · Double-clic = supprimer</span>}
         {tool !== 'pen' && <span className="hint">Molette : zoom · Alt/Shift-drag : pan</span>}
       </div>
     </div>
