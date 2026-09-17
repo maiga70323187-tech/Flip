@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { resolveShape } from '../lib/interpolate.js';
 import { simplify, toBezierPath, anchorsToD, makeSmoothAnchor, makeCornerAnchor, nearestOnPath, splitCubic } from '../lib/pathTools.js';
+import { computeBoneTransforms, ancestorChain, solveFABRIK } from '../lib/rigging.js';
+import { BonesOverlay } from './Bones.jsx';
 
-function ShapeSvg({ shape, t_ms, ghost }) {
+function ShapeSvg({ shape, t_ms, ghost, boneTransforms }) {
   const { transform, style, props } = resolveShape(shape, t_ms);
-  const tf = `translate(${transform.x} ${transform.y}) rotate(${transform.rotation}) scale(${transform.scale_x} ${transform.scale_y})`;
+  const bt = shape.parent_bone ? boneTransforms?.[shape.parent_bone] : null;
+  const boneTf = bt ? `translate(${bt.x} ${bt.y}) rotate(${bt.rotation}) ` : '';
+  const tf = boneTf + `translate(${transform.x} ${transform.y}) rotate(${transform.rotation}) scale(${transform.scale_x} ${transform.scale_y})`;
   const attrs = {
     fill: style.fill ?? 'none',
     stroke: style.stroke ?? 'none',
@@ -55,7 +59,7 @@ function bboxOf(shape) {
   }
 }
 
-export function Stage({ project, t_ms, onSelectShape, selectedId, tool, drawColor, strokeWidth, filled, onionSkin, activeVectorLayerId, onDraw, onDragTransform, onEditAnchors }) {
+export function Stage({ project, t_ms, onSelectShape, selectedId, tool, drawColor, strokeWidth, filled, onionSkin, activeVectorLayerId, onDraw, onDragTransform, onEditAnchors, selectedBone, onSelectBone, onCreateBone, onPatchBone, onSolveIK }) {
   const svgRef = useRef(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -67,6 +71,9 @@ export function Stage({ project, t_ms, onSelectShape, selectedId, tool, drawColo
   const [penHover, setPenHover] = useState(null);         // curseur en mode stylo pour preview live
   const [anchorDrag, setAnchorDrag] = useState(null);     // édition d'un tracé sélectionné
   const [handleDrag, setHandleDrag] = useState(null);     // édition d'une poignée hIn/hOut d'un tracé sélectionné
+  const [boneCreate, setBoneCreate] = useState(null);     // { layer_id, parent_id, startX, startY }
+  const [boneJointDrag, setBoneJointDrag] = useState(null); // rotation FK
+  const [boneTipDrag, setBoneTipDrag] = useState(null);   // IK sur chaîne d'ancêtres
 
   useEffect(() => { setPan({ x: 0, y: 0 }); setZoom(1); }, [project?.id]);
   useEffect(() => { setPenAnchors([]); setPenDragging(null); }, [tool, activeVectorLayerId, project?.id]);
@@ -146,6 +153,22 @@ export function Stage({ project, t_ms, onSelectShape, selectedId, tool, drawColo
 
     if (tool === 'freehand') { setDrawing({ kind: 'freehand', points: [[x, y]] }); return; }
     if (tool === 'rect' || tool === 'ellipse' || tool === 'line') { setDrawing({ kind: tool, start: [x, y], end: [x, y] }); return; }
+
+    if (tool === 'bone') {
+      if (!activeVectorLayerId) return;
+      const layer = project.layers.find(l => l.id === activeVectorLayerId);
+      const bt = computeBoneTransforms(layer.bones ?? [], t_ms);
+      // Cherche un tip d'os proche pour continuer la chaîne
+      let parent = null, sx = x, sy = y;
+      const threshold = (12 / zoom) ** 2;
+      for (const b of (layer.bones ?? [])) {
+        const t = bt[b.id]; if (!t) continue;
+        const d = (x - t.tipX) ** 2 + (y - t.tipY) ** 2;
+        if (d < threshold) { parent = b; sx = t.tipX; sy = t.tipY; break; }
+      }
+      setBoneCreate({ layer_id: activeVectorLayerId, parent_id: parent?.id ?? null, startX: sx, startY: sy, endX: sx, endY: sy });
+      return;
+    }
   };
 
   const onMouseMove = (e) => {
@@ -187,6 +210,25 @@ export function Stage({ project, t_ms, onSelectShape, selectedId, tool, drawColo
       const next = shape.props.anchors.map((a, i) => i === anchorDrag.index ? { ...a, x: lx, y: ly } : a);
       onEditAnchors?.({ layer_id: anchorDrag.layer_id, shape, anchors: next, phase: 'move' });
     }
+    if (boneCreate) { setBoneCreate({ ...boneCreate, endX: x, endY: y }); return; }
+    if (boneJointDrag) {
+      const { layer, bone } = boneJointDrag;
+      const bt = computeBoneTransforms(layer.bones, t_ms);
+      const t = bt[bone.id];
+      const world = Math.atan2(y - t.y, x - t.x) * 180 / Math.PI;
+      const base = t.rotation - (bone.rotation || 0);
+      onPatchBone?.(layer.id, bone.id, { rotation: world - base });
+      return;
+    }
+    if (boneTipDrag) {
+      const { layer, bone } = boneTipDrag;
+      const chain = ancestorChain(layer.bones, bone.id);
+      const bt = computeBoneTransforms(layer.bones, t_ms);
+      const root = bt[chain[0].id];
+      const rotations = solveFABRIK(chain, root.x, root.y, x, y);
+      onSolveIK?.(layer.id, chain.map(b => b.id), rotations);
+      return;
+    }
     if (handleDrag) {
       const shape = handleDrag.shape;
       const { transform } = resolveShape(shape, t_ms);
@@ -213,6 +255,21 @@ export function Stage({ project, t_ms, onSelectShape, selectedId, tool, drawColo
     if (dragging) { onDragTransform?.({ ...dragging, phase: 'end' }); setDragging(null); }
     if (anchorDrag) { onEditAnchors?.({ ...anchorDrag, phase: 'end' }); setAnchorDrag(null); }
     if (handleDrag) { onEditAnchors?.({ ...handleDrag, phase: 'end' }); setHandleDrag(null); }
+    if (boneCreate) {
+      const dx = boneCreate.endX - boneCreate.startX;
+      const dy = boneCreate.endY - boneCreate.startY;
+      const length = Math.hypot(dx, dy);
+      if (length > 4) {
+        const rotation = Math.atan2(dy, dx) * 180 / Math.PI;
+        const body = boneCreate.parent_id
+          ? { parent_id: boneCreate.parent_id, length, rotation }
+          : { x: boneCreate.startX, y: boneCreate.startY, length, rotation };
+        onCreateBone?.(boneCreate.layer_id, body);
+      }
+      setBoneCreate(null);
+    }
+    if (boneJointDrag) setBoneJointDrag(null);
+    if (boneTipDrag) setBoneTipDrag(null);
   };
 
   function commitDrawing() {
@@ -370,9 +427,10 @@ export function Stage({ project, t_ms, onSelectShape, selectedId, tool, drawColo
             if (tt < 0 || tt > project.duration_ms) return null;
             return (
               <g key={off} opacity={0.18} style={{ pointerEvents: 'none' }}>
-                {project.layers.filter(l => l.kind === 'vector' && l.visible).map(l => (
-                  <g key={l.id}>{l.shapes.map(s => <ShapeSvg key={s.id} shape={s} t_ms={tt} ghost={0.6}/>)}</g>
-                ))}
+                {project.layers.filter(l => l.kind === 'vector' && l.visible).map(l => {
+                  const btt = computeBoneTransforms(l.bones ?? [], tt);
+                  return <g key={l.id}>{l.shapes.map(s => <ShapeSvg key={s.id} shape={s} t_ms={tt} ghost={0.6} boneTransforms={btt}/>)}</g>;
+                })}
               </g>
             );
           })}
@@ -385,11 +443,12 @@ export function Stage({ project, t_ms, onSelectShape, selectedId, tool, drawColo
               const f = l.frames[idx];
               return f?.image ? <image key={l.id} href={f.image} width={width} height={height} opacity={l.opacity}/> : null;
             }
+            const boneTf = computeBoneTransforms(l.bones ?? [], t_ms);
             return (
               <g key={l.id} opacity={l.opacity}>
                 {l.shapes.map(s => (
                   <g key={s.id} onMouseDown={(e) => startShapeDrag(s, l.id, e)}>
-                    <ShapeSvg shape={s} t_ms={t_ms}/>
+                    <ShapeSvg shape={s} t_ms={t_ms} boneTransforms={boneTf}/>
                   </g>
                 ))}
               </g>
@@ -433,6 +492,27 @@ export function Stage({ project, t_ms, onSelectShape, selectedId, tool, drawColo
 
           {penPreview()}
 
+          {/* Overlay des os */}
+          <BonesOverlay
+            project={project}
+            t_ms={t_ms}
+            zoom={zoom}
+            tool={tool}
+            selectedBoneId={selectedBone?.bone?.id}
+            onSelectBone={(layer_id, bone) => onSelectBone?.({ layer_id, bone })}
+            onStartJointDrag={(layer, bone, e) => { e.stopPropagation(); setBoneJointDrag({ layer, bone }); }}
+            onStartTipDrag={(layer, bone, e) => { e.stopPropagation(); setBoneTipDrag({ layer, bone }); }}
+          />
+
+          {/* Trait de création d'os */}
+          {boneCreate && (
+            <g style={{ pointerEvents: 'none' }}>
+              <line x1={boneCreate.startX} y1={boneCreate.startY} x2={boneCreate.endX} y2={boneCreate.endY} stroke="#f6b352" strokeWidth={3 / zoom} strokeLinecap="round" strokeDasharray={`${6 / zoom} ${4 / zoom}`}/>
+              <circle cx={boneCreate.startX} cy={boneCreate.startY} r={5 / zoom} fill={boneCreate.parent_id ? '#7cd0ff' : '#f6b352'}/>
+              <circle cx={boneCreate.endX} cy={boneCreate.endY} r={4 / zoom} fill="#fff" stroke="#f6b352" strokeWidth={1.5 / zoom}/>
+            </g>
+          )}
+
           {drawing && drawing.kind === 'freehand' && drawing.points.length > 1 && (
             <path d={toBezierPath(drawing.points)} fill="none" stroke={drawColor} strokeWidth={strokeWidth || 2} strokeLinecap="round" strokeLinejoin="round" opacity={0.9}/>
           )}
@@ -454,6 +534,8 @@ export function Stage({ project, t_ms, onSelectShape, selectedId, tool, drawColo
         <button onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}>Recadrer</button>
         {tool === 'pen' && <span className="hint">Clic = point · Clic-glisser = courbe · Alt+clic = coin · clic sur 1er point = fermer · clic sur segment sélectionné = insérer · Entrée/Échap = terminer</span>}
         {tool === 'select' && editableAnchors && <span className="hint">Drag point = déplacer · Drag poignée = courbure · Alt+drag poignée = casser la symétrie · Alt+clic point = lisse/coin · Double-clic = supprimer</span>}
+        {tool === 'bone' && <span className="hint">Clic-glisser sur vide = nouvel os racine · Clic-glisser depuis un tip = os enfant · Sélectionne un calque vectoriel actif</span>}
+        {tool === 'select' && selectedBone && <span className="hint">Drag joint = rotation FK · Drag tip = IK (tire toute la chaîne)</span>}
         {tool !== 'pen' && <span className="hint">Molette : zoom · Alt/Shift-drag : pan</span>}
       </div>
     </div>

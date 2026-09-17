@@ -3,6 +3,7 @@
 
 import { EASINGS } from '../lib/model.js';
 import { cubicBezier } from '../lib/bezier.js';
+import { computeBoneTransforms } from './rigging.js';
 
 function easingCurve(name, bezier) {
   if (name === 'bezier' && Array.isArray(bezier) && bezier.length === 4) return cubicBezier(...bezier);
@@ -50,9 +51,11 @@ export function resolveShape(shape, t_ms) {
   return { transform, style, props };
 }
 
-function shapeToSvg(shape, t_ms) {
+function shapeToSvg(shape, t_ms, boneTransforms) {
   const { transform, style, props } = resolveShape(shape, t_ms);
-  const tf = `translate(${transform.x} ${transform.y}) rotate(${transform.rotation}) scale(${transform.scale_x} ${transform.scale_y})`;
+  const bt = shape.parent_bone && boneTransforms ? boneTransforms[shape.parent_bone] : null;
+  const boneTf = bt ? `translate(${bt.x} ${bt.y}) rotate(${bt.rotation}) ` : '';
+  const tf = boneTf + `translate(${transform.x} ${transform.y}) rotate(${transform.rotation}) scale(${transform.scale_x} ${transform.scale_y})`;
   const fill = style.fill ?? 'none';
   const stroke = style.stroke ?? 'none';
   const strokeWidth = style.stroke_width ?? 0;
@@ -101,8 +104,9 @@ export function renderFrameSvg(project, t_ms) {
   for (const l of project.layers) {
     if (!l.visible) continue;
     if (l.kind === 'vector') {
+      const bt = computeBoneTransforms(l.bones ?? [], t_ms);
       parts.push(`<g opacity="${l.opacity}">`);
-      for (const s of l.shapes) parts.push(shapeToSvg(s, t_ms));
+      for (const s of l.shapes) parts.push(shapeToSvg(s, t_ms, bt));
       parts.push('</g>');
     } else if (l.kind === 'raster') {
       const framePeriod = 1000 / (l.fps || 12);

@@ -16,6 +16,7 @@ export function Inspector({ project, selected, t_ms, onPatchShape, onAddKeyframe
             <h3>{s.type} · <small>{s.id.slice(0, 6)}</small></h3>
             <TransformFields shape={s} onPatch={(patch) => onPatchShape(selected.layer_id, s.id, patch)}/>
             <StyleFields project={project} shape={s} onPatch={(patch) => onPatchShape(selected.layer_id, s.id, patch)}/>
+            <BoneAttachment project={project} selected={selected} shape={s} onPatchShape={onPatchShape}/>
           </section>
 
           <section>
@@ -89,3 +90,18 @@ function StyleFields({ project, shape, onPatch }) {
 }
 
 function round2(v) { return Math.round(v * 100) / 100; }
+
+function BoneAttachment({ project, selected, shape, onPatchShape }) {
+  const layer = project.layers.find(l => l.id === selected.layer_id);
+  const bones = layer?.bones ?? [];
+  if (bones.length === 0) return null;
+  return (
+    <div className="row">
+      <label>Os</label>
+      <select value={shape.parent_bone ?? ''} onChange={e => onPatchShape(selected.layer_id, shape.id, { parent_bone: e.target.value || null })}>
+        <option value="">— aucun —</option>
+        {bones.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+      </select>
+    </div>
+  );
+}

@@ -122,6 +122,39 @@ s.tool('update_bone', 'Modifier un os (rotation, longueur, parent)',
   { project_id: z.string(), layer_id: z.string(), bone_id: z.string(), rotation: z.number().optional(), length: z.number().optional(), parent_id: z.string().nullable().optional() },
   async ({ project_id, layer_id, bone_id, ...body }) => asContent(await callApi(`/api/projects/${project_id}/layers/${layer_id}/bones/${bone_id}`, { method: 'PATCH', body })));
 
+s.tool('delete_bone', 'Supprimer un os (ses enfants sont ré-attachés au parent, les shapes attachées sont détachées)',
+  { project_id: z.string(), layer_id: z.string(), bone_id: z.string() },
+  async ({ project_id, layer_id, bone_id }) => { await callApi(`/api/projects/${project_id}/layers/${layer_id}/bones/${bone_id}`, { method: 'DELETE' }); return asContent({ ok: true }); });
+
+s.tool('attach_shape_to_bone', 'Rattacher une forme à un os (elle suit désormais l\'os)',
+  { project_id: z.string(), layer_id: z.string(), shape_id: z.string(), bone_id: z.string().nullable() },
+  async ({ project_id, layer_id, shape_id, bone_id }) => asContent(await callApi(`/api/projects/${project_id}/layers/${layer_id}/shapes/${shape_id}`, { method: 'PATCH', body: { parent_bone: bone_id } })));
+
+s.tool('add_bone_chain', 'Créer une chaîne d\'os d\'un coup, chaque os héritant du précédent',
+  { project_id: z.string(), layer_id: z.string(), root_x: z.number(), root_y: z.number(), segments: z.array(z.object({ name: z.string().optional(), length: z.number(), rotation: z.number().optional() })).min(1) },
+  async ({ project_id, layer_id, root_x, root_y, segments }) => {
+    const created = [];
+    let parent_id = null;
+    for (let i = 0; i < segments.length; i++) {
+      const seg = segments[i];
+      const body = i === 0
+        ? { name: seg.name ?? `os-${i + 1}`, x: root_x, y: root_y, length: seg.length, rotation: seg.rotation ?? 0 }
+        : { name: seg.name ?? `os-${i + 1}`, parent_id, length: seg.length, rotation: seg.rotation ?? 0 };
+      const b = await callApi(`/api/projects/${project_id}/layers/${layer_id}/bones`, { method: 'POST', body });
+      created.push(b);
+      parent_id = b.id;
+    }
+    return asContent(created);
+  });
+
+s.tool('animate_bone_rotation', 'Ajouter une keyframe sur la rotation d\'un os (pour l\'animation FK)',
+  { project_id: z.string(), layer_id: z.string(), bone_id: z.string(), time_ms: z.number(), value: z.number(), easing: z.enum(['linear', 'ease-in', 'ease-out', 'ease-in-out', 'step', 'bezier']).optional(), bezier: z.array(z.number()).length(4).optional() },
+  async ({ project_id, layer_id, bone_id, ...body }) => asContent(await callApi(`/api/projects/${project_id}/layers/${layer_id}/bones/${bone_id}/keyframes`, { method: 'POST', body: { property: 'rotation', ...body } })));
+
+s.tool('solve_ik', 'Résout la cinématique inverse : trouver les rotations des os pour que la pointe atteigne (target_x, target_y). apply=true applique le résultat aux os.',
+  { project_id: z.string(), layer_id: z.string(), tip_bone_id: z.string(), target_x: z.number(), target_y: z.number(), apply: z.boolean().optional() },
+  async (body) => asContent(await callApi(`/api/projects/${body.project_id}/ik/solve`, { method: 'POST', body })));
+
 // ---------- frame-by-frame ----------
 s.tool('add_raster_frame', 'Ajouter une frame dessinée (image data URL ou strokes) sur un calque raster',
   { project_id: z.string(), layer_id: z.string(), duration_ms: z.number(), image: z.string().optional(), strokes: z.array(z.any()).optional() },

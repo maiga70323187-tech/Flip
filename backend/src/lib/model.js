@@ -62,7 +62,7 @@ function defaultShapeProps(type) {
 }
 
 export function newBone({ name = 'os', parent_id = null, length = 60, rotation = 0, x = 0, y = 0 } = {}) {
-  return { id: uid(), name, parent_id, length, rotation, x, y };
+  return { id: uid(), name, parent_id, length, rotation, x, y, tracks: {} };
 }
 
 export function newKeyframe({ time_ms, value, easing = 'linear', bezier = null } = {}) {

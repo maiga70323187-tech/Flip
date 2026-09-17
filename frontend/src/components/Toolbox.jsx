@@ -1,5 +1,5 @@
-export const TOOLS = ['select', 'pen', 'freehand', 'rect', 'ellipse', 'line'];
-const LABELS = { select: '⇱ Sélection', pen: '✒️ Stylo', freehand: '✎ Pinceau', rect: '▭ Rectangle', ellipse: '◯ Ellipse', line: '╱ Ligne' };
+export const TOOLS = ['select', 'pen', 'freehand', 'rect', 'ellipse', 'line', 'bone'];
+const LABELS = { select: '⇱ Sélection', pen: '✒️ Stylo', freehand: '✎ Pinceau', rect: '▭ Rectangle', ellipse: '◯ Ellipse', line: '╱ Ligne', bone: '🦴 Os' };
 
 export function Toolbox({ tool, setTool, drawColor, setDrawColor, strokeWidth, setStrokeWidth, filled, setFilled, onionSkin, setOnionSkin }) {
   return (

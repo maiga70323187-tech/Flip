@@ -100,6 +100,38 @@ export function createApp() {
   app.patch('/api/projects/:id/layers/:layerId/bones/:boneId', wrap(async (req, res) => {
     ok(res, await store.patchBone(req.params.id, req.params.layerId, req.params.boneId, req.body));
   }));
+  app.delete('/api/projects/:id/layers/:layerId/bones/:boneId', wrap(async (req, res) => {
+    res.status(await store.deleteBone(req.params.id, req.params.layerId, req.params.boneId) ? 204 : 404).end();
+  }));
+  app.post('/api/projects/:id/layers/:layerId/bones/:boneId/keyframes', wrap(async (req, res) => {
+    if (!['rotation', 'length', 'x', 'y'].includes(req.body.property)) return res.status(400).json({ error: 'property must be rotation/length/x/y' });
+    ok(res, await store.addBoneKeyframe(req.params.id, req.params.layerId, req.params.boneId, req.body.property, req.body), 201);
+  }));
+
+  // ---------- IK ----------
+  app.post('/api/projects/:id/ik/solve', wrap(async (req, res) => {
+    const p = await store.getProject(req.params.id);
+    if (!p) return notFound(res);
+    const { layer_id, tip_bone_id, target_x, target_y, apply } = req.body ?? {};
+    const layer = p.layers.find(l => l.id === layer_id);
+    if (!layer?.bones?.length) return res.status(400).json({ error: 'layer or bones not found' });
+    const { computeBoneTransforms, ancestorChain, solveFABRIK } = await import('./services/rigging.js');
+    const chain = ancestorChain(layer.bones, tip_bone_id);
+    if (!chain.length) return res.status(400).json({ error: 'tip bone not found' });
+    const world = computeBoneTransforms(layer.bones);
+    const root = world[chain[0].id];
+    const rotations = solveFABRIK(chain, root.x, root.y, target_x, target_y);
+    if (apply) {
+      await store.mutate(p.id, pr => {
+        const l = pr.layers.find(x => x.id === layer_id);
+        for (let i = 0; i < chain.length; i++) {
+          const b = l.bones.find(x => x.id === chain[i].id);
+          if (b) b.rotation = rotations[i];
+        }
+      });
+    }
+    res.json({ chain: chain.map(b => b.id), rotations });
+  }));
 
   // ---------- raster frames ----------
   app.post('/api/projects/:id/layers/:layerId/frames', wrap(async (req, res) => {

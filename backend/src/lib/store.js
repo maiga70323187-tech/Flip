@@ -184,6 +184,39 @@ export class JsonStore {
     return out;
   }
 
+  async deleteBone(projectId, layerId, boneId) {
+    let ok = false;
+    await this.mutate(projectId, p => {
+      const l = p.layers.find(x => x.id === layerId);
+      if (!l?.bones) return;
+      // Ré-attacher les enfants au parent de l'os supprimé et détacher les shapes.
+      const removed = l.bones.find(b => b.id === boneId);
+      if (!removed) return;
+      for (const child of l.bones) if (child.parent_id === boneId) child.parent_id = removed.parent_id ?? null;
+      for (const s of l.shapes) if (s.parent_bone === boneId) s.parent_bone = null;
+      l.bones = l.bones.filter(b => b.id !== boneId);
+      ok = true;
+    });
+    return ok;
+  }
+
+  async addBoneKeyframe(projectId, layerId, boneId, property, kf) {
+    let out = null;
+    await this.mutate(projectId, p => {
+      const b = p.layers.find(x => x.id === layerId)?.bones?.find(x => x.id === boneId);
+      if (!b) return;
+      if (!b.tracks) b.tracks = {};
+      b.tracks[property] = b.tracks[property] || [];
+      const nk = { id: crypto.randomUUID(), ...kf };
+      const existing = b.tracks[property].findIndex(k => k.time_ms === nk.time_ms);
+      if (existing >= 0) b.tracks[property][existing] = nk;
+      else b.tracks[property].push(nk);
+      b.tracks[property].sort((a, b) => a.time_ms - b.time_ms);
+      out = nk;
+    });
+    return out;
+  }
+
   // ---------- raster frames ----------
   async addRasterFrame(projectId, layerId, input) {
     let out = null;

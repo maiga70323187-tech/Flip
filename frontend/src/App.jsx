@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from './api.js';
 import { Stage } from './components/Stage.jsx';
 import { Timeline } from './components/Timeline.jsx';
@@ -20,6 +20,7 @@ export default function App() {
   const [filled, setFilled] = useState(true);
   const [onionSkin, setOnionSkin] = useState(false);
   const [activeLayerId, setActiveLayerId] = useState(null);
+  const [selectedBone, setSelectedBone] = useState(null);
 
   const refresh = () => api.listProjects().then(setProjects).catch(e => setError(e.message));
   const load = async (id) => { const p = await api.getProject(id); setProject(p); setT(0); setSelected(null); setActiveLayerId(p.layers.find(l => l.kind === 'vector')?.id ?? null); };
@@ -75,6 +76,63 @@ export default function App() {
   const onApplyDecor = async (preset) => {
     try { await api.addDecor(project.id, { preset }); reload(); }
     catch (e) { setError(e.message); }
+  };
+
+  // ---------- os ----------
+  const onCreateBone = async (layer_id, body) => {
+    try { const b = await api.addBone(project.id, layer_id, body); setSelectedBone({ layer_id, bone: b }); reload(); }
+    catch (e) { setError(e.message); }
+  };
+  // Patch un os en optimistic-update pour un feedback fluide pendant le drag,
+  // puis persiste en fin de drag (throttle simple via ref).
+  const pendingBonePatch = useRef({});
+  const onPatchBone = async (layer_id, bone_id, patch) => {
+    try {
+      // Update local pour la réactivité
+      setProject(pr => {
+        if (!pr) return pr;
+        const layers = pr.layers.map(l => {
+          if (l.id !== layer_id) return l;
+          const bones = (l.bones ?? []).map(b => b.id === bone_id ? { ...b, ...patch } : b);
+          return { ...l, bones };
+        });
+        return { ...pr, layers };
+      });
+      // Throttled persist
+      const key = `${layer_id}:${bone_id}`;
+      pendingBonePatch.current[key] = patch;
+      clearTimeout(pendingBonePatch.current._t);
+      pendingBonePatch.current._t = setTimeout(async () => {
+        for (const [k, p] of Object.entries(pendingBonePatch.current)) {
+          if (k === '_t') continue;
+          const [lid, bid] = k.split(':');
+          await api.patchBone(project.id, lid, bid, p);
+          delete pendingBonePatch.current[k];
+        }
+      }, 120);
+    } catch (e) { setError(e.message); }
+  };
+  const onSolveIK = async (layer_id, boneIds, rotations) => {
+    // Update local
+    setProject(pr => {
+      if (!pr) return pr;
+      const layers = pr.layers.map(l => {
+        if (l.id !== layer_id) return l;
+        const bones = (l.bones ?? []).map(b => {
+          const idx = boneIds.indexOf(b.id);
+          return idx >= 0 ? { ...b, rotation: rotations[idx] } : b;
+        });
+        return { ...l, bones };
+      });
+      return { ...pr, layers };
+    });
+    // Persist
+    clearTimeout(pendingBonePatch.current._ik);
+    pendingBonePatch.current._ik = setTimeout(async () => {
+      for (let i = 0; i < boneIds.length; i++) {
+        await api.patchBone(project.id, layer_id, boneIds[i], { rotation: rotations[i] });
+      }
+    }, 120);
   };
 
   const exportSvg = async () => {
@@ -136,6 +194,11 @@ export default function App() {
               onDraw={onDraw}
               onDragTransform={onDragTransform}
               onEditAnchors={onEditAnchors}
+              selectedBone={selectedBone}
+              onSelectBone={setSelectedBone}
+              onCreateBone={onCreateBone}
+              onPatchBone={onPatchBone}
+              onSolveIK={onSolveIK}
             />
             <Inspector
               project={project}
