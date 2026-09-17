@@ -52,3 +52,40 @@ export function toBezierPath(points) {
 }
 
 function fmt(n) { return Math.round(n * 100) / 100; }
+
+// ---------- Stylo à points d'ancrage ----------
+// Une ancre : { x, y, hIn: [dx, dy] | null, hOut: [dx, dy] | null }
+// hIn / hOut sont des offsets relatifs à (x, y). null = coin anguleux (pas de poignée).
+
+export function anchorsToD(anchors, closed = false) {
+  if (!Array.isArray(anchors) || anchors.length === 0) return '';
+  const a0 = anchors[0];
+  let d = `M ${fmt(a0.x)} ${fmt(a0.y)}`;
+  const end = closed ? anchors.length : anchors.length - 1;
+  for (let i = 0; i < end; i++) {
+    const cur = anchors[i];
+    const next = anchors[(i + 1) % anchors.length];
+    const out = cur.hOut;
+    const inp = next.hIn;
+    if (!out && !inp) {
+      d += ` L ${fmt(next.x)} ${fmt(next.y)}`;
+    } else {
+      const c1x = cur.x + (out ? out[0] : 0);
+      const c1y = cur.y + (out ? out[1] : 0);
+      const c2x = next.x + (inp ? inp[0] : 0);
+      const c2y = next.y + (inp ? inp[1] : 0);
+      d += ` C ${fmt(c1x)} ${fmt(c1y)}, ${fmt(c2x)} ${fmt(c2y)}, ${fmt(next.x)} ${fmt(next.y)}`;
+    }
+  }
+  if (closed) d += ' Z';
+  return d;
+}
+
+// Ancre symétrique lisse : hOut = (dx, dy), hIn = (-dx, -dy).
+export function makeSmoothAnchor(x, y, dx, dy) {
+  return { x, y, hIn: [-dx, -dy], hOut: [dx, dy] };
+}
+
+export function makeCornerAnchor(x, y) {
+  return { x, y, hIn: null, hOut: null };
+}

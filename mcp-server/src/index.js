@@ -50,6 +50,36 @@ s.tool('draw_path', 'Raccourci pour ajouter une forme SVG "path" en fournissant 
   { project_id: z.string(), layer_id: z.string(), d: z.string(), fill: z.string().optional(), stroke: z.string().optional(), stroke_width: z.number().optional() },
   async ({ project_id, layer_id, d, fill, stroke, stroke_width }) => asContent(await callApi(`/api/projects/${project_id}/layers/${layer_id}/shapes`, { method: 'POST', body: { type: 'path', props: { d }, style: { fill: fill ?? '#222', stroke: stroke ?? 'none', stroke_width: stroke_width ?? 0 } } })));
 
+const anchorSchema = z.object({
+  x: z.number(),
+  y: z.number(),
+  hIn: z.tuple([z.number(), z.number()]).nullable().optional(),
+  hOut: z.tuple([z.number(), z.number()]).nullable().optional(),
+});
+s.tool('draw_path_anchors', 'Dessiner un tracé Bézier en fournissant une liste d\'ancres (x, y, hIn?, hOut?). hIn/hOut sont des offsets [dx, dy] relatifs à l\'ancre ; null = coin anguleux. closed=true ferme la forme.',
+  { project_id: z.string(), layer_id: z.string(), anchors: z.array(anchorSchema).min(2), closed: z.boolean().optional(), fill: z.string().optional(), stroke: z.string().optional(), stroke_width: z.number().optional() },
+  async ({ project_id, layer_id, anchors, closed, fill, stroke, stroke_width }) => {
+    // conversion en d côté agent : réutilise le même algo que le frontend.
+    const fmt = (n) => Math.round(n * 100) / 100;
+    const a0 = anchors[0];
+    let d = `M ${fmt(a0.x)} ${fmt(a0.y)}`;
+    const end = closed ? anchors.length : anchors.length - 1;
+    for (let i = 0; i < end; i++) {
+      const cur = anchors[i];
+      const next = anchors[(i + 1) % anchors.length];
+      if (!cur.hOut && !next.hIn) d += ` L ${fmt(next.x)} ${fmt(next.y)}`;
+      else {
+        const c1x = cur.x + (cur.hOut?.[0] ?? 0);
+        const c1y = cur.y + (cur.hOut?.[1] ?? 0);
+        const c2x = next.x + (next.hIn?.[0] ?? 0);
+        const c2y = next.y + (next.hIn?.[1] ?? 0);
+        d += ` C ${fmt(c1x)} ${fmt(c1y)}, ${fmt(c2x)} ${fmt(c2y)}, ${fmt(next.x)} ${fmt(next.y)}`;
+      }
+    }
+    if (closed) d += ' Z';
+    return asContent(await callApi(`/api/projects/${project_id}/layers/${layer_id}/shapes`, { method: 'POST', body: { type: 'path', props: { d, anchors, closed: !!closed }, style: { fill: fill ?? (closed ? '#222' : 'none'), stroke: stroke ?? (closed ? 'none' : '#222'), stroke_width: stroke_width ?? (closed ? 0 : 2) } } }));
+  });
+
 s.tool('update_shape', 'Modifier transform/style/props d\'une forme',
   { project_id: z.string(), layer_id: z.string(), shape_id: z.string(), transform: transformSchema, style: styleSchema, props: z.any().optional(), parent_bone: z.string().nullable().optional() },
   async ({ project_id, layer_id, shape_id, ...body }) => asContent(await callApi(`/api/projects/${project_id}/layers/${layer_id}/shapes/${shape_id}`, { method: 'PATCH', body })));

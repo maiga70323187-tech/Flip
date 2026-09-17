@@ -59,6 +59,19 @@ export default function App() {
     catch (e) { setError(e.message); }
   };
 
+  // Édition en direct d'ancres d'un tracé sélectionné : on ne pousse au backend
+  // qu'à la fin du drag pour éviter d'inonder l'API à chaque pixel.
+  const onEditAnchors = async ({ layer_id, shape, anchors, phase }) => {
+    if (phase !== 'end') return;
+    try {
+      const { anchorsToD } = await import('./lib/pathTools.js');
+      const closed = shape.props?.closed ?? false;
+      const d = anchorsToD(anchors, closed);
+      await api.patchShape(project.id, layer_id, shape.id, { props: { anchors, closed, d } });
+      reload();
+    } catch (e) { setError(e.message); }
+  };
+
   const onApplyDecor = async (preset) => {
     try { await api.addDecor(project.id, { preset }); reload(); }
     catch (e) { setError(e.message); }
@@ -122,6 +135,7 @@ export default function App() {
               activeVectorLayerId={activeVectorLayerId}
               onDraw={onDraw}
               onDragTransform={onDragTransform}
+              onEditAnchors={onEditAnchors}
             />
             <Inspector
               project={project}
