@@ -56,13 +56,17 @@
       "parameters": [{ "$ref": "#/components/parameters/ProjectId" }, { "name": "t_ms", "in": "query", "schema": { "type": "number" } }],
       "get": { "summary": "Rendre une frame SVG à t_ms", "responses": { "200": { "description": "SVG" } } }
     },
+    "/api/projects/{id}/render.png": {
+      "parameters": [{ "$ref": "#/components/parameters/ProjectId" }, { "name": "t_ms", "in": "query", "schema": { "type": "number" } }, { "name": "width", "in": "query", "schema": { "type": "number" } }],
+      "get": { "summary": "Rendre une frame PNG à t_ms (rasterisée localement)", "responses": { "200": { "description": "PNG" } } }
+    },
     "/api/projects/{id}/manifest": {
       "parameters": [{ "$ref": "#/components/parameters/ProjectId" }],
       "get": { "summary": "Manifeste de rendu", "responses": { "200": { "description": "Manifeste" } } }
     },
     "/api/projects/{id}/export": {
       "parameters": [{ "$ref": "#/components/parameters/ProjectId" }],
-      "post": { "summary": "Exporter (json ou svg)", "responses": { "201": { "description": "OK" } } }
+      "post": { "summary": "Exporter (json, svg, png, mp4). mp4 rend chaque frame en PNG via resvg puis encode via ffmpeg-static, entièrement local.", "responses": { "201": { "description": "OK" } } }
     }
   },
   "components": {

@@ -201,9 +201,13 @@ export default function App() {
     }, 120);
   };
 
-  const exportSvg = async () => {
-    const url = `${api.base}/api/projects/${project.id}/render?t_ms=${Math.round(t_ms)}`;
-    window.open(url, '_blank');
+  const exportSvg = () => window.open(`${api.base}/api/projects/${project.id}/render?t_ms=${Math.round(t_ms)}`, '_blank');
+  const exportPng = () => window.open(`${api.base}/api/projects/${project.id}/render.png?t_ms=${Math.round(t_ms)}`, '_blank');
+  const exportMp4 = async () => {
+    try {
+      const r = await api.export(project.id, { format: 'mp4', fps: project.fps });
+      setError(`MP4 généré → ${r.file}`);
+    } catch (e) { setError(e.message); }
   };
 
   return (
@@ -221,7 +225,9 @@ export default function App() {
           {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
         <button onClick={async () => { const p = await api.createProject({ name: `Projet ${projects.length + 1}` }); await refresh(); load(p.id); }}>Nouveau projet</button>
-        {project && <button onClick={exportSvg}>Voir SVG</button>}
+        {project && <button onClick={exportSvg}>SVG</button>}
+        {project && <button onClick={exportPng}>PNG</button>}
+        {project && <button onClick={exportMp4}>🎬 MP4</button>}
         {project && <button onClick={() => setGraphOpen(g => !g)} className={graphOpen ? 'active' : ''}>📈 Graph editor</button>}
         <a href={`${api.base}/api/openapi.json`} target="_blank" rel="noreferrer">OpenAPI</a>
       </section>

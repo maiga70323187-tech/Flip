@@ -177,9 +177,9 @@ s.tool('get_manifest', 'Obtenir le manifeste de rendu (fps, count, calques, audi
   { project_id: z.string() },
   async ({ project_id }) => asContent(await callApi(`/api/projects/${project_id}/manifest`)));
 
-s.tool('export_project', 'Exporter le projet (json complet ou svg d\'un instant)',
-  { project_id: z.string(), format: z.enum(['json', 'svg']).optional(), t_ms: z.number().optional() },
-  async ({ project_id, format, t_ms }) => asContent(await callApi(`/api/projects/${project_id}/export`, { method: 'POST', body: { format, t_ms } })));
+s.tool('export_project', 'Exporter le projet (json, svg, png ou mp4). mp4 rend la timeline complète en local via resvg + ffmpeg, sans modèle externe.',
+  { project_id: z.string(), format: z.enum(['json', 'svg', 'png', 'mp4']).optional(), t_ms: z.number().optional(), fps: z.number().optional(), width: z.number().optional() },
+  async ({ project_id, ...body }) => asContent(await callApi(`/api/projects/${project_id}/export`, { method: 'POST', body })));
 
 // ---------- defs (gradients) ----------
 const stopSchema = z.object({ offset: z.number(), color: z.string(), opacity: z.number().optional() });

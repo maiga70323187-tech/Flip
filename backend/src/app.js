@@ -12,6 +12,7 @@ import {
 } from './lib/validate.js';
 import { renderFrameSvg, renderManifest } from './services/render.js';
 import { generateDecor, DECOR_PRESETS } from './services/decor.js';
+import { svgToPng, svgsToMp4 } from './services/rasterize.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const dataRoot = process.env.FLIP_DATA_DIR ?? path.resolve(here, '../data/projects');
@@ -232,6 +233,16 @@ export function createApp() {
     res.type('image/svg+xml').send(svg);
   }));
 
+  app.get('/api/projects/:id/render.png', wrap(async (req, res) => {
+    const p = await store.getProject(req.params.id);
+    if (!p) return notFound(res);
+    const t = Number(req.query.t_ms ?? 0);
+    const w = req.query.width ? Number(req.query.width) : undefined;
+    const svg = renderFrameSvg(p, t);
+    const png = svgToPng(svg, { width: w });
+    res.type('image/png').send(png);
+  }));
+
   app.post('/api/projects/:id/export', wrap(async (req, res) => {
     const p = await store.getProject(req.params.id);
     if (!p) return notFound(res);
@@ -239,9 +250,23 @@ export function createApp() {
     const exportDir = process.env.FLIP_EXPORT_DIR ?? path.resolve(here, '../../output/exports');
     await fs.mkdir(exportDir, { recursive: true });
     const stamp = Date.now();
-    const file = path.join(exportDir, `${p.id}-${stamp}.${format === 'svg' ? 'svg' : 'json'}`);
-    if (format === 'svg') await fs.writeFile(file, renderFrameSvg(p, Number(req.body.t_ms ?? 0)));
-    else await fs.writeFile(file, JSON.stringify({ project: p, manifest: renderManifest(p) }, null, 2));
+    const ext = { svg: 'svg', png: 'png', mp4: 'mp4', json: 'json' }[format] ?? 'json';
+    const file = path.join(exportDir, `${p.id}-${stamp}.${ext}`);
+    if (format === 'svg') {
+      await fs.writeFile(file, renderFrameSvg(p, Number(req.body.t_ms ?? 0)));
+    } else if (format === 'png') {
+      const svg = renderFrameSvg(p, Number(req.body.t_ms ?? 0));
+      await fs.writeFile(file, svgToPng(svg, { width: req.body.width }));
+    } else if (format === 'mp4') {
+      const fps = Number(req.body.fps ?? p.fps ?? 24);
+      const period = 1000 / fps;
+      const frameCount = Math.max(1, Math.ceil(p.duration_ms / period));
+      const svgs = [];
+      for (let i = 0; i < frameCount; i++) svgs.push(renderFrameSvg(p, i * period));
+      await svgsToMp4({ svgs, fps, width: p.width, height: p.height, outFile: file });
+    } else {
+      await fs.writeFile(file, JSON.stringify({ project: p, manifest: renderManifest(p) }, null, 2));
+    }
     res.status(201).json({ status: 'exported', format, file });
   }));
 
