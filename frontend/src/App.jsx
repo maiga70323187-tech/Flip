@@ -8,6 +8,7 @@ import { Toolbox } from './components/Toolbox.jsx';
 import { DecorPresets } from './components/DecorPresets.jsx';
 import { BonesPanel } from './components/BonesPanel.jsx';
 import { GraphEditor } from './components/GraphEditor.jsx';
+import { CharactersPanel } from './components/CharactersPanel.jsx';
 
 export default function App() {
   const [projects, setProjects] = useState([]);
@@ -25,6 +26,7 @@ export default function App() {
   const [selectedBone, setSelectedBone] = useState(null);
   const [ikChainLength, setIkChainLength] = useState(2);
   const [graphOpen, setGraphOpen] = useState(false);
+  const [selectedCharId, setSelectedCharId] = useState(null);
 
   const refresh = () => api.listProjects().then(setProjects).catch(e => setError(e.message));
   const load = async (id) => { const p = await api.getProject(id); setProject(p); setT(0); setSelected(null); setActiveLayerId(p.layers.find(l => l.kind === 'vector')?.id ?? null); };
@@ -93,6 +95,24 @@ export default function App() {
 
   const onApplyDecor = async (preset) => {
     try { await api.addDecor(project.id, { preset }); reload(); }
+    catch (e) { setError(e.message); }
+  };
+
+  // ---------- characters (Phase 1) ----------
+  const onImportCharacter = async (characterJson) => {
+    try { const c = await api.addCharacter(project.id, characterJson); setSelectedCharId(c.id); reload(); }
+    catch (e) { setError(e.message + (e.code ? ` [${e.code}]` : '')); }
+  };
+  const onPatchCharacter = async (cid, patch) => {
+    // optimistic
+    setProject(pr => {
+      if (!pr) return pr;
+      return { ...pr, characters: (pr.characters ?? []).map(c => c.id === cid ? { ...c, ...patch, transform: patch.transform ? { ...c.transform, ...patch.transform } : c.transform } : c) };
+    });
+    try { await api.patchCharacter(project.id, cid, patch); } catch (e) { setError(e.message); reload(); }
+  };
+  const onDeleteCharacter = async (cid) => {
+    try { await api.deleteCharacter(project.id, cid); if (selectedCharId === cid) setSelectedCharId(null); reload(); }
     catch (e) { setError(e.message); }
   };
 
@@ -252,6 +272,15 @@ export default function App() {
                 onToggleVisible={l => guarded(() => api.patchLayer(project.id, l.id, { visible: !l.visible }))()}
               />
               <DecorPresets onApply={onApplyDecor}/>
+              <CharactersPanel
+                project={project}
+                api={api}
+                selectedCharId={selectedCharId}
+                onSelectCharacter={c => setSelectedCharId(c.id)}
+                onImport={onImportCharacter}
+                onDelete={onDeleteCharacter}
+                onPatchCharacter={onPatchCharacter}
+              />
               <BonesPanel
                 project={project}
                 activeLayerId={activeVectorLayerId}

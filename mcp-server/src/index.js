@@ -197,5 +197,26 @@ s.tool('apply_decor_preset', 'Appliquer un décor procédural (sky_day, sky_suns
   { project_id: z.string(), preset: z.enum(['sky_day', 'sky_sunset', 'sky_night', 'mountains', 'grass_field']), seed: z.number().optional() },
   async ({ project_id, preset, seed }) => asContent(await callApi(`/api/projects/${project_id}/decor`, { method: 'POST', body: { preset, seed } })));
 
+// ---------- characters (Phase 1) — voir docs/knowledge/12_AI_AGENT_CONTRACT.md ----------
+s.tool('list_characters', 'Lister les personnages présents dans un projet',
+  { project_id: z.string() },
+  async ({ project_id }) => asContent(await callApi(`/api/projects/${project_id}/characters`)));
+
+s.tool('add_character', 'Ajouter un personnage validé conforme à docs/schemas/character.schema.json (Character Package v1.0). L\'agent choisit l\'intention, le moteur calcule la mécanique.',
+  { project_id: z.string(), character: z.any() },
+  async ({ project_id, character }) => asContent(await callApi(`/api/projects/${project_id}/characters`, { method: 'POST', body: character })));
+
+s.tool('get_character_capabilities', 'Renvoie les capabilities, views, expressions, poses et clips d\'un personnage. Avant toute action, l\'agent doit interroger ce endpoint.',
+  { project_id: z.string(), character_id: z.string() },
+  async ({ project_id, character_id }) => asContent(await callApi(`/api/projects/${project_id}/characters/${character_id}/capabilities`)));
+
+s.tool('list_character_examples', 'Lister les exemples de personnages disponibles dans la knowledge base (docs/examples/characters/)',
+  {},
+  async () => asContent(await callApi('/api/knowledge/characters')));
+
+s.tool('load_character_example', 'Charger un exemple depuis la KB par sa clé (ex: "humanoid", "quadruped-cat"). Utile pour amorcer un projet.',
+  { key: z.string() },
+  async ({ key }) => asContent(await callApi(`/api/knowledge/characters/${key}`)));
+
 const transport = new StdioServerTransport();
 await s.connect(transport);

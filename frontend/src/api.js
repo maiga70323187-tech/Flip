@@ -35,6 +35,14 @@ export const api = {
   addDef:        (id, body)  => j(`/api/projects/${id}/defs`, { method: 'POST', body }),
   addDecor:      (id, body)  => j(`/api/projects/${id}/decor`, { method: 'POST', body }),
   export:        (id, body)  => j(`/api/projects/${id}/export`, { method: 'POST', body }),
+  // Characters (Phase 1)
+  listCharacters:    (id)         => j(`/api/projects/${id}/characters`),
+  addCharacter:      (id, body)   => j(`/api/projects/${id}/characters`, { method: 'POST', body }),
+  patchCharacter:    (id, cid, body) => j(`/api/projects/${id}/characters/${cid}`, { method: 'PATCH', body }),
+  deleteCharacter:   (id, cid)    => j(`/api/projects/${id}/characters/${cid}`, { method: 'DELETE' }),
+  charCapabilities:  (id, cid)    => j(`/api/projects/${id}/characters/${cid}/capabilities`),
+  listKbExamples:    ()           => j('/api/knowledge/characters'),
+  loadKbExample:     (key)        => j(`/api/knowledge/characters/${key}`),
   render:        (id, t)     => `${BASE}/api/projects/${id}/render?t_ms=${t}`,
   manifest:      (id)        => j(`/api/projects/${id}/manifest`),
 };

@@ -1,4 +1,4 @@
-import { SHAPE_TYPES, LAYER_KINDS, ANIMATABLE, EASINGS } from './model.js';
+import { SHAPE_TYPES, LAYER_KINDS, ANIMATABLE, EASINGS, CHARACTER_KINDS, RIG_PROFILES, FlipError } from './model.js';
 
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
 const isStr = (v) => typeof v === 'string' && v.length > 0;
@@ -55,4 +55,32 @@ export function assertReorder(ids, targets) {
   const src = new Set(targets.map(t => t.id));
   if (ids.length !== src.size) fail('ids length mismatch');
   for (const id of ids) if (!src.has(id)) fail(`unknown id ${id}`);
+}
+
+// Character — validation légère alignée sur docs/schemas/character.schema.json.
+// (Validateur minimal, pas d'ajv, pour rester sans dépendance.)
+export function assertCharacterInput(body = {}) {
+  const errs = [];
+  const req = (k) => body[k] === undefined && errs.push(`missing: ${k}`);
+  req('schemaVersion'); req('id'); req('kind'); req('rigProfile');
+  req('parts'); req('bones'); req('capabilities');
+  if (body.schemaVersion && body.schemaVersion !== '1.0') errs.push('schemaVersion must be "1.0"');
+  if (body.id && !/^[A-Za-z][A-Za-z0-9_-]*$/.test(body.id)) errs.push('id must match [A-Za-z][A-Za-z0-9_-]*');
+  if (body.kind && !CHARACTER_KINDS.includes(body.kind)) errs.push(`kind must be one of ${CHARACTER_KINDS.join(', ')}`);
+  if (body.rigProfile && !RIG_PROFILES.includes(body.rigProfile)) errs.push(`rigProfile must be one of ${RIG_PROFILES.join(', ')}`);
+  if (body.parts && !Array.isArray(body.parts)) errs.push('parts must be an array');
+  if (body.bones && !Array.isArray(body.bones)) errs.push('bones must be an array');
+  if (body.capabilities && typeof body.capabilities !== 'object') errs.push('capabilities must be an object');
+  // parts[]
+  for (const [i, p] of Object.entries(body.parts ?? [])) {
+    if (!p.id) errs.push(`parts[${i}].id required`);
+    if (!p.source) errs.push(`parts[${i}].source required`);
+    if (p.pivot && (typeof p.pivot.x !== 'number' || typeof p.pivot.y !== 'number')) errs.push(`parts[${i}].pivot invalid`);
+  }
+  // bones[]
+  for (const [i, b] of Object.entries(body.bones ?? [])) {
+    if (!b.id) errs.push(`bones[${i}].id required`);
+    if (b.length !== undefined && typeof b.length !== 'number') errs.push(`bones[${i}].length must be number`);
+  }
+  if (errs.length) throw new FlipError('INVALID_CHARACTER_SCHEMA', errs.join('; '), { errors: errs });
 }

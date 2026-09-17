@@ -39,6 +39,21 @@ header p { margin: 2px 0 10px; opacity: .7; font-size: 12px; }
 .layers li .lname { cursor: pointer; flex: 1; user-select: none; }
 .layers li button { margin-left: auto; background: transparent; border: none; color: var(--muted); cursor: pointer; }
 
+/* Characters */
+.characters-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px; font-size: 12px; }
+.characters-panel h3 { margin: 0; font-size: 13px; }
+.characters-panel ul { list-style: none; padding: 0; margin: 6px 0; display: flex; flex-direction: column; gap: 4px; }
+.characters-panel li { padding: 4px 6px; border: 1px solid var(--border); border-radius: 4px; display: grid; grid-template-columns: 1fr auto auto; grid-template-rows: auto auto; gap: 4px; align-items: center; cursor: pointer; }
+.characters-panel li.active { background: rgba(0, 170, 255, 0.12); border-color: var(--accent); }
+.characters-panel li .cname { font-size: 12px; }
+.characters-panel li .chip { grid-column: 2; font-size: 10px; padding: 1px 5px; background: rgba(127,127,127,0.15); border-radius: 3px; color: var(--muted); }
+.characters-panel li .del { grid-column: 3; background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: 14px; }
+.characters-panel li .char-details { grid-column: 1 / span 3; display: grid; grid-template-columns: 1fr 1fr; gap: 3px 6px; padding-top: 4px; border-top: 1px dashed var(--border); }
+.characters-panel li .char-details label { display: flex; justify-content: space-between; align-items: center; gap: 4px; font-size: 10px; color: var(--muted); }
+.characters-panel li .char-details input, .characters-panel li .char-details select { width: 60%; font-size: 11px; padding: 1px 3px; }
+.characters-panel .kb-imports button { display: block; width: 100%; margin: 3px 0; padding: 4px 6px; background: transparent; border: 1px dashed var(--border); color: var(--fg); border-radius: 4px; cursor: pointer; text-align: left; font-size: 11px; }
+.characters-panel .kb-imports button:hover:enabled { background: rgba(0, 170, 255, 0.08); border-style: solid; }
+
 /* Bones */
 .bones-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px; font-size: 12px; }
 .bones-panel header { display: flex; justify-content: space-between; align-items: center; }

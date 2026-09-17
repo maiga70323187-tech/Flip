@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { newProject, newVectorLayer, newRasterLayer, newShape, newKeyframe, newRasterFrame, newBone, newLinearGradient, newRadialGradient } from './model.js';
+import { newProject, newVectorLayer, newRasterLayer, newShape, newKeyframe, newRasterFrame, newBone, newLinearGradient, newRadialGradient, newCharacter, FlipError } from './model.js';
 
 export class JsonStore {
   constructor(root) { this.root = root; }
@@ -324,5 +324,68 @@ export class JsonStore {
       if (i >= 0) { p.defs.splice(i, 1); ok = true; }
     });
     return ok;
+  }
+
+  // ---------- characters (Phase 1) ----------
+  async listCharacters(projectId) {
+    const p = await this.getProject(projectId);
+    if (!p) return null;
+    return (p.characters ?? []).map(c => ({ id: c.id, name: c.name, kind: c.kind, rigProfile: c.rigProfile, defaultView: c.defaultView }));
+  }
+
+  async getCharacter(projectId, characterId) {
+    const p = await this.getProject(projectId);
+    return p?.characters?.find(c => c.id === characterId) ?? null;
+  }
+
+  async addCharacter(projectId, characterInput) {
+    let out = null;
+    await this.mutate(projectId, p => {
+      if (!p.characters) p.characters = [];
+      // Si id déjà présent, rejeter (les collisions sont significatives)
+      if (p.characters.some(c => c.id === characterInput.id)) {
+        throw new FlipError('INVALID_CHARACTER_SCHEMA', `character id already exists: ${characterInput.id}`);
+      }
+      out = newCharacter(characterInput);
+      p.characters.push(out);
+    });
+    return out;
+  }
+
+  async patchCharacter(projectId, characterId, patch) {
+    let out = null;
+    await this.mutate(projectId, p => {
+      const c = (p.characters ?? []).find(x => x.id === characterId);
+      if (!c) throw new FlipError('UNKNOWN_CHARACTER', `no character with id ${characterId}`);
+      // Fusions ciblées (transform, currentView, currentExpression, visible, zIndex, assetRoots)
+      if (patch.transform) c.transform = { ...c.transform, ...patch.transform };
+      for (const k of ['currentView', 'currentExpression', 'visible', 'zIndex', 'name']) {
+        if (patch[k] !== undefined) c[k] = patch[k];
+      }
+      if (patch.assetRoots) c.assetRoots = { ...c.assetRoots, ...patch.assetRoots };
+      out = c;
+    });
+    return out;
+  }
+
+  async deleteCharacter(projectId, characterId) {
+    let ok = false;
+    await this.mutate(projectId, p => {
+      const i = (p.characters ?? []).findIndex(c => c.id === characterId);
+      if (i >= 0) { p.characters.splice(i, 1); ok = true; }
+    });
+    return ok;
+  }
+
+  async setCharacterPartAsset(projectId, characterId, partSource, assetUrl) {
+    let out = null;
+    await this.mutate(projectId, p => {
+      const c = (p.characters ?? []).find(x => x.id === characterId);
+      if (!c) throw new FlipError('UNKNOWN_CHARACTER', characterId);
+      if (!c.assetRoots) c.assetRoots = {};
+      c.assetRoots[partSource] = assetUrl;
+      out = { source: partSource, url: assetUrl };
+    });
+    return out;
   }
 }

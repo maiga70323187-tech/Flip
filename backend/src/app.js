@@ -9,10 +9,12 @@ import { JsonStore } from './lib/store.js';
 import {
   assertProjectInput, assertLayerInput, assertShapeInput,
   assertKeyframeInput, assertRasterFrameInput, assertReorder,
+  assertCharacterInput,
 } from './lib/validate.js';
 import { renderFrameSvg, renderManifest } from './services/render.js';
 import { generateDecor, DECOR_PRESETS } from './services/decor.js';
 import { svgToPng, svgsToMp4 } from './services/rasterize.js';
+import { FlipError } from './lib/model.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const dataRoot = process.env.FLIP_DATA_DIR ?? path.resolve(here, '../data/projects');
@@ -270,9 +272,79 @@ export function createApp() {
     res.status(201).json({ status: 'exported', format, file });
   }));
 
+  // ---------- characters (Phase 1) ----------
+  const kbExamplesDir = path.resolve(here, '../../docs/examples/characters');
+
+  // Servir les exemples fournis par la knowledge base
+  app.get('/api/knowledge/characters', wrap(async (req, res) => {
+    try {
+      const files = (await fs.readdir(kbExamplesDir)).filter(f => f.endsWith('.json'));
+      res.json(files.map(f => ({ key: f.replace(/\.example\.json$/, '').replace(/\.json$/, ''), file: f })));
+    } catch { res.json([]); }
+  }));
+  app.get('/api/knowledge/characters/:key', wrap(async (req, res) => {
+    const file = path.join(kbExamplesDir, `${req.params.key}.example.json`);
+    try { const raw = await fs.readFile(file, 'utf8'); res.type('application/json').send(raw); }
+    catch { res.status(404).json({ error: 'example not found', code: 'MISSING_ASSET' }); }
+  }));
+
+  app.get('/api/projects/:id/characters', wrap(async (req, res) => {
+    const list = await store.listCharacters(req.params.id);
+    if (list === null) return notFound(res);
+    res.json(list);
+  }));
+  app.post('/api/projects/:id/characters', wrap(async (req, res) => {
+    const p = await store.getProject(req.params.id);
+    if (!p) return notFound(res);
+    assertCharacterInput(req.body);
+    // Régénère un id sans collision si nécessaire
+    if (p.characters?.some(c => c.id === req.body.id)) {
+      req.body = { ...req.body, id: `${req.body.id}_${Date.now().toString(36).slice(-4)}` };
+    }
+    const c = await store.addCharacter(req.params.id, req.body);
+    res.status(201).json(c);
+  }));
+  app.get('/api/projects/:id/characters/:cid', wrap(async (req, res) => {
+    const c = await store.getCharacter(req.params.id, req.params.cid);
+    if (!c) return res.status(404).json({ error: 'character not found', code: 'UNKNOWN_CHARACTER' });
+    res.json(c);
+  }));
+  app.get('/api/projects/:id/characters/:cid/capabilities', wrap(async (req, res) => {
+    const c = await store.getCharacter(req.params.id, req.params.cid);
+    if (!c) return res.status(404).json({ error: 'character not found', code: 'UNKNOWN_CHARACTER' });
+    res.json({
+      id: c.id, name: c.name, kind: c.kind, rigProfile: c.rigProfile,
+      defaultView: c.defaultView, currentView: c.currentView, currentExpression: c.currentExpression,
+      views: c.views, expressions: Object.keys(c.expressions ?? {}),
+      poses: Object.keys(c.poses ?? {}), clips: Object.keys(c.clips ?? {}),
+      capabilities: c.capabilities,
+    });
+  }));
+  app.patch('/api/projects/:id/characters/:cid', wrap(async (req, res) => {
+    const c = await store.patchCharacter(req.params.id, req.params.cid, req.body);
+    res.json(c);
+  }));
+  app.delete('/api/projects/:id/characters/:cid', wrap(async (req, res) => {
+    res.status(await store.deleteCharacter(req.params.id, req.params.cid) ? 204 : 404).end();
+  }));
+  // Upload asset pour une part (attaché via source dans assetRoots)
+  app.post('/api/projects/:id/characters/:cid/asset', upload.single('file'), wrap(async (req, res) => {
+    const partSource = req.body.part_source ?? req.query.part_source;
+    if (!partSource) return res.status(400).json({ error: 'part_source required (query or body)' });
+    if (!req.file) return res.status(400).json({ error: 'file required (multipart)' });
+    // Le fichier est stocké dans assetRoot ; on l'expose via /assets/:file
+    const url = `${req.protocol}://${req.get('host')}/assets/${path.basename(req.file.path)}`;
+    const r = await store.setCharacterPartAsset(req.params.id, req.params.cid, partSource, url);
+    res.status(201).json(r);
+  }));
+
+  // Servir les assets uploadés (images des parts)
+  app.use('/assets', express.static(assetRoot));
+
   // ---------- errors ----------
   app.use((err, req, res, next) => {
     console.error(err);
+    if (err instanceof FlipError) return res.status(err.status).json({ error: err.message, code: err.code, details: err.details });
     res.status(err.status ?? 500).json({ error: err.message });
   });
   return app;

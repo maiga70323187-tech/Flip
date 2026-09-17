@@ -20,10 +20,68 @@ export function newProject({ name = 'Nouveau projet', width = 1920, height = 108
     symbols: [],
     layers: [],
     defs: [],
+    characters: [],
     audio_tracks: [],
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
+}
+
+// --- Character (voir docs/knowledge/01_CHARACTER_MODEL.md + docs/schemas/character.schema.json)
+export const CHARACTER_KINDS = ['human', 'quadruped', 'creature', 'objectCharacter'];
+export const RIG_PROFILES = ['humanoid', 'quadruped', 'custom', 'none'];
+
+export function newCharacter(input = {}) {
+  const id = input.id ?? `char_${uid().slice(0, 8)}`;
+  return {
+    schemaVersion: '1.0',
+    id,
+    name: input.name ?? 'Personnage',
+    kind: input.kind ?? 'human',
+    rigProfile: input.rigProfile ?? 'humanoid',
+    defaultView: input.defaultView ?? 'front',
+    styleProfile: input.styleProfile ?? {},
+    views: input.views ?? { front: { available: true } },
+    parts: input.parts ?? [],
+    slots: input.slots ?? [],
+    bones: input.bones ?? [],
+    ikChains: input.ikChains ?? [],
+    expressions: input.expressions ?? { neutral: {} },
+    poses: input.poses ?? {},
+    clips: input.clips ?? {},
+    capabilities: input.capabilities ?? {},
+    // Extensions Flip (non normatives) : placement du personnage dans la scène + vue/expression courantes.
+    transform: input.transform ?? { x: 400, y: 400, rotation: 0, scale: 1 },
+    currentView: input.currentView ?? input.defaultView ?? 'front',
+    currentExpression: input.currentExpression ?? 'neutral',
+    visible: input.visible !== false,
+    zIndex: input.zIndex ?? 100,
+    tracks: input.tracks ?? {},
+    assetRoots: input.assetRoots ?? {}, // { "front/head.svg": "http://..." | "data:..." }
+  };
+}
+
+// Erreurs structurées attendues par le contrat agent IA
+// (voir docs/knowledge/12_AI_AGENT_CONTRACT.md).
+export const FLIP_ERROR_CODES = {
+  UNKNOWN_CHARACTER: 'UNKNOWN_CHARACTER',
+  UNKNOWN_ACTION: 'UNKNOWN_ACTION',
+  MISSING_VIEW: 'MISSING_VIEW',
+  MISSING_ASSET: 'MISSING_ASSET',
+  INVALID_TARGET: 'INVALID_TARGET',
+  UNREACHABLE_TARGET: 'UNREACHABLE_TARGET',
+  MISSING_SLOT: 'MISSING_SLOT',
+  UNSUPPORTED_EXPRESSION: 'UNSUPPORTED_EXPRESSION',
+  INVALID_CHARACTER_SCHEMA: 'INVALID_CHARACTER_SCHEMA',
+};
+
+export class FlipError extends Error {
+  constructor(code, message, details = {}) {
+    super(message ?? code);
+    this.code = code;
+    this.details = details;
+    this.status = code === 'UNKNOWN_CHARACTER' || code === 'MISSING_VIEW' || code === 'MISSING_ASSET' ? 404 : 400;
+  }
 }
 
 export function newVectorLayer({ name = 'Calque vectoriel' } = {}) {

@@ -4,6 +4,7 @@
 import { EASINGS } from '../lib/model.js';
 import { cubicBezier } from '../lib/bezier.js';
 import { computeBoneTransforms } from './rigging.js';
+import { characterToSvg } from './character-render.js';
 
 function easingCurve(name, bezier) {
   if (name === 'bezier' && Array.isArray(bezier) && bezier.length === 4) return cubicBezier(...bezier);
@@ -71,6 +72,14 @@ function shapeToSvg(shape, t_ms, boneTransforms) {
     case 'polygon': return `<polygon points="${props.points}" ${attrs}/>`;
     case 'line':    return `<line x1="${props.x1}" y1="${props.y1}" x2="${props.x2}" y2="${props.y2}" ${attrs}/>`;
     case 'text':    return `<text x="0" y="0" font-family="${props.font_family}" font-size="${props.font_size}" font-weight="${props.font_weight}" ${attrs}>${escapeXml(props.text)}</text>`;
+    case 'image': {
+      // Rendu image d'un asset ou d'une data URL (voir docs/knowledge/13_FLIP_INTEGRATION_NOTES.md).
+      const href = props.href ?? props.url ?? props.asset_id ?? '';
+      if (!href) return '';
+      const w = props.width ?? 100;
+      const h = props.height ?? 100;
+      return `<image href="${href}" x="${-(w * transform.anchor_x)}" y="${-(h * transform.anchor_y)}" width="${w}" height="${h}" opacity="${opacity}" transform="${tf}"/>`;
+    }
     default:        return '';
   }
 }
@@ -115,6 +124,11 @@ export function renderFrameSvg(project, t_ms) {
       if (f?.image) parts.push(`<image href="${f.image}" width="${project.width}" height="${project.height}" opacity="${l.opacity}"/>`);
     }
   }
+
+  // --- Characters (Phase 1) — rendus par-dessus les layers, triés par zIndex.
+  const chars = (project.characters ?? []).filter(c => c.visible !== false).sort((a, b) => (a.zIndex ?? 100) - (b.zIndex ?? 100));
+  for (const c of chars) parts.push(characterToSvg(c, { t_ms }));
+
   parts.push('</svg>');
   return parts.join('');
 }

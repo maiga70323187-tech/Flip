@@ -3,6 +3,36 @@ import { resolveShape } from '../lib/interpolate.js';
 import { simplify, toBezierPath, anchorsToD, makeSmoothAnchor, makeCornerAnchor, nearestOnPath, splitCubic } from '../lib/pathTools.js';
 import { computeBoneTransforms, ancestorChain, solveFABRIK } from '../lib/rigging.js';
 import { BonesOverlay } from './Bones.jsx';
+import { normalizeCharacterBones, resolvePartSource, visibleParts } from '../lib/character.js';
+
+function CharacterSvg({ character, t_ms }) {
+  if (!character.visible) return null;
+  const nb = normalizeCharacterBones(character.bones ?? []);
+  const bt = computeBoneTransforms(nb, t_ms);
+  const tr = character.transform ?? { x: 0, y: 0, rotation: 0, scale: 1 };
+  const parts = visibleParts(character);
+  return (
+    <g transform={`translate(${tr.x} ${tr.y}) rotate(${tr.rotation ?? 0}) scale(${tr.scale ?? 1})`}>
+      {parts.map(p => {
+        const bone = p.bone ? bt[p.bone] : null;
+        const boneTf = bone ? `translate(${bone.x} ${bone.y}) rotate(${bone.rotation}) ` : '';
+        const w = p.width ?? 100, h = p.height ?? 100;
+        const px = (p.pivot?.x ?? 0.5) * w, py = (p.pivot?.y ?? 0.5) * h;
+        const src = resolvePartSource(character, p);
+        if (src.kind === 'image') {
+          return <image key={p.id} href={src.url} x={0} y={0} width={w} height={h} transform={`${boneTf}translate(${-px} ${-py})`}/>;
+        }
+        // Placeholder debug (règle #10 : c'est bien étiqueté "manquant")
+        return (
+          <g key={p.id} transform={`${boneTf}translate(${-px} ${-py})`}>
+            <rect x={0} y={0} width={w} height={h} fill="rgba(255,0,80,0.15)" stroke="#c00" strokeDasharray="6 4"/>
+            <text x={4} y={14} fontSize={10} fill="#c00">{p.id}</text>
+          </g>
+        );
+      })}
+    </g>
+  );
+}
 
 function ShapeSvg({ shape, t_ms, ghost, boneTransforms }) {
   const { transform, style, props } = resolveShape(shape, t_ms);
@@ -454,6 +484,11 @@ export function Stage({ project, t_ms, onSelectShape, selectedId, tool, drawColo
               </g>
             );
           })}
+
+          {/* Characters (Phase 1) — au-dessus des layers, triés par zIndex */}
+          {(project.characters ?? []).filter(c => c.visible !== false).sort((a, b) => (a.zIndex ?? 100) - (b.zIndex ?? 100)).map(c => (
+            <CharacterSvg key={c.id} character={c} t_ms={t_ms}/>
+          ))}
 
           {selBox && (
             <g style={{ pointerEvents: 'none' }}>
