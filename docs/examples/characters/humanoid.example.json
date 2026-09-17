@@ -1,0 +1,213 @@
+{
+  "schemaVersion": "1.0",
+  "id": "human_example_01",
+  "name": "Humanoid Example",
+  "kind": "human",
+  "rigProfile": "humanoid",
+  "defaultView": "front",
+  "styleProfile": {
+    "geometry": "flat-stylized",
+    "headsTall": 6.8,
+    "outline": "soft",
+    "shading": "minimal"
+  },
+  "views": {
+    "front": {
+      "available": true
+    },
+    "sideLeft": {
+      "available": true
+    },
+    "back": {
+      "available": true
+    }
+  },
+  "parts": [
+    {
+      "id": "torso",
+      "source": "front/torso.svg",
+      "view": "front",
+      "bone": "chest",
+      "pivot": {
+        "x": 0.5,
+        "y": 0.88
+      },
+      "zIndex": 30
+    },
+    {
+      "id": "head",
+      "source": "front/head.svg",
+      "view": "front",
+      "bone": "head",
+      "pivot": {
+        "x": 0.5,
+        "y": 0.9
+      },
+      "zIndex": 60
+    },
+    {
+      "id": "upperArm_R",
+      "source": "front/upperArm_R.svg",
+      "view": "front",
+      "bone": "shoulder_R",
+      "pivot": {
+        "x": 0.5,
+        "y": 0.08
+      },
+      "zIndex": 50
+    },
+    {
+      "id": "forearm_R",
+      "source": "front/forearm_R.svg",
+      "view": "front",
+      "bone": "elbow_R",
+      "pivot": {
+        "x": 0.5,
+        "y": 0.08
+      },
+      "zIndex": 51
+    },
+    {
+      "id": "hand_R_open",
+      "source": "front/hand_R_open.svg",
+      "view": "front",
+      "bone": "wrist_R",
+      "pivot": {
+        "x": 0.5,
+        "y": 0.1
+      },
+      "zIndex": 52,
+      "variantGroup": "hand_R"
+    }
+  ],
+  "slots": [
+    {
+      "id": "torso",
+      "bone": "chest",
+      "part": "torso",
+      "zIndex": 30
+    },
+    {
+      "id": "head",
+      "bone": "head",
+      "part": "head",
+      "zIndex": 60
+    },
+    {
+      "id": "hand_R",
+      "bone": "wrist_R",
+      "part": "hand_R_open",
+      "zIndex": 52
+    }
+  ],
+  "bones": [
+    {
+      "id": "root",
+      "parent": null,
+      "x": 0,
+      "y": 0,
+      "rotation": 0,
+      "length": 0
+    },
+    {
+      "id": "hips",
+      "parent": "root",
+      "x": 0,
+      "y": 300,
+      "rotation": 0,
+      "length": 60
+    },
+    {
+      "id": "spine",
+      "parent": "hips",
+      "rotation": -90,
+      "length": 80
+    },
+    {
+      "id": "chest",
+      "parent": "spine",
+      "rotation": 0,
+      "length": 70
+    },
+    {
+      "id": "neck",
+      "parent": "chest",
+      "rotation": 0,
+      "length": 25
+    },
+    {
+      "id": "head",
+      "parent": "neck",
+      "rotation": 0,
+      "length": 75,
+      "limits": {
+        "min": -35,
+        "max": 35
+      }
+    },
+    {
+      "id": "shoulder_R",
+      "parent": "chest",
+      "rotation": 10,
+      "length": 110,
+      "limits": {
+        "min": -160,
+        "max": 160
+      }
+    },
+    {
+      "id": "elbow_R",
+      "parent": "shoulder_R",
+      "rotation": 10,
+      "length": 105,
+      "limits": {
+        "min": 0,
+        "max": 155
+      }
+    },
+    {
+      "id": "wrist_R",
+      "parent": "elbow_R",
+      "rotation": 0,
+      "length": 40
+    }
+  ],
+  "ikChains": [
+    {
+      "id": "arm_R",
+      "root": "shoulder_R",
+      "middle": "elbow_R",
+      "end": "wrist_R",
+      "bendDirection": "auto",
+      "allowStretch": false
+    }
+  ],
+  "expressions": {
+    "neutral": {},
+    "happy": {},
+    "sad": {},
+    "angry": {},
+    "surprised": {},
+    "eyesClosed": {}
+  },
+  "poses": {
+    "idle": {},
+    "wave_start": {}
+  },
+  "clips": {
+    "wave": {
+      "mode": "skeletal"
+    },
+    "run": {
+      "mode": "sprite"
+    }
+  },
+  "capabilities": {
+    "canWave": true,
+    "canWalk": true,
+    "canRun": true,
+    "canLookAt": true,
+    "canBlink": true,
+    "supportsIKArms": true
+  }
+}

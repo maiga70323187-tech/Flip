@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "1.0",
+  "id": "run_sprite_example",
+  "mode": "sprite",
+  "duration": 0.6,
+  "fps": 12,
+  "loop": true,
+  "frames": [
+    {
+      "asset": "run/frame_01.png",
+      "duration": 0.083
+    },
+    {
+      "asset": "run/frame_02.png",
+      "duration": 0.083
+    },
+    {
+      "asset": "run/frame_03.png",
+      "duration": 0.083
+    },
+    {
+      "asset": "run/frame_04.png",
+      "duration": 0.083
+    },
+    {
+      "asset": "run/frame_05.png",
+      "duration": 0.083
+    },
+    {
+      "asset": "run/frame_06.png",
+      "duration": 0.083
+    },
+    {
+      "asset": "run/frame_07.png",
+      "duration": 0.083
+    }
+  ],
+  "events": []
+}

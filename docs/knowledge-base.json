@@ -1,0 +1,14 @@
+{
+  "name": "Flip 2D Character Knowledge Base",
+  "version": "2.0",
+  "purpose": "Structured rules for LLM coding agents to build and animate professional 2D characters in Flip.",
+  "reference_families": [
+    "humanoid turnaround",
+    "cut-out segmented characters",
+    "facial expression sheets",
+    "sprite/run cycles",
+    "quadruped low-poly",
+    "quadruped chibi"
+  ],
+  "repository_mutation": false
+}

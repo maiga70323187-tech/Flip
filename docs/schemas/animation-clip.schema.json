@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Flip Animation Clip",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "id",
+    "mode",
+    "duration"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "id": {
+      "type": "string"
+    },
+    "mode": {
+      "enum": [
+        "skeletal",
+        "sprite",
+        "hybrid"
+      ]
+    },
+    "duration": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "fps": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "loop": {
+      "type": "boolean"
+    },
+    "tracks": {
+      "type": "array"
+    },
+    "frames": {
+      "type": "array"
+    },
+    "events": {
+      "type": "array"
+    }
+  }
+}

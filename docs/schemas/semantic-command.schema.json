@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Flip Semantic Animation Command",
+  "type": "object",
+  "required": [
+    "type",
+    "actor"
+  ],
+  "properties": {
+    "type": {
+      "enum": [
+        "playAction",
+        "setPose",
+        "lookAt",
+        "reach",
+        "pickUp",
+        "setExpression"
+      ]
+    },
+    "actor": {
+      "type": "string"
+    },
+    "action": {
+      "type": "string"
+    },
+    "pose": {
+      "type": "string"
+    },
+    "expression": {
+      "type": "string"
+    },
+    "duration": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "target": {
+      "type": [
+        "object",
+        "string"
+      ]
+    },
+    "params": {
+      "type": "object"
+    }
+  }
+}

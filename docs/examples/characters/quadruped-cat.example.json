@@ -1,0 +1,102 @@
+{
+  "schemaVersion": "1.0",
+  "id": "cat_example_01",
+  "name": "Quadruped Cat Example",
+  "kind": "quadruped",
+  "rigProfile": "quadruped",
+  "defaultView": "sideLeft",
+  "styleProfile": {
+    "geometry": "chibi",
+    "headScale": 1.8,
+    "bodyScale": 0.9,
+    "eyes": "oversized"
+  },
+  "views": {
+    "front": {
+      "available": true
+    },
+    "sideLeft": {
+      "available": true
+    }
+  },
+  "parts": [],
+  "slots": [],
+  "bones": [
+    {
+      "id": "root",
+      "parent": null,
+      "x": 0,
+      "y": 0,
+      "rotation": 0,
+      "length": 0
+    },
+    {
+      "id": "pelvis",
+      "parent": "root",
+      "rotation": 0,
+      "length": 45
+    },
+    {
+      "id": "spine_mid",
+      "parent": "pelvis",
+      "rotation": 180,
+      "length": 90
+    },
+    {
+      "id": "chest",
+      "parent": "spine_mid",
+      "rotation": 0,
+      "length": 45
+    },
+    {
+      "id": "neck",
+      "parent": "chest",
+      "rotation": -25,
+      "length": 30
+    },
+    {
+      "id": "head",
+      "parent": "neck",
+      "rotation": 0,
+      "length": 55
+    },
+    {
+      "id": "tail_01",
+      "parent": "pelvis",
+      "rotation": -30,
+      "length": 60
+    },
+    {
+      "id": "tail_02",
+      "parent": "tail_01",
+      "rotation": -10,
+      "length": 55
+    },
+    {
+      "id": "tail_03",
+      "parent": "tail_02",
+      "rotation": 10,
+      "length": 45
+    }
+  ],
+  "ikChains": [],
+  "expressions": {
+    "neutral": {},
+    "happy": {},
+    "blink": {}
+  },
+  "poses": {
+    "sit": {},
+    "stand": {}
+  },
+  "clips": {
+    "walk": {
+      "mode": "skeletal"
+    }
+  },
+  "capabilities": {
+    "canWalk": true,
+    "canSit": true,
+    "canBlink": true
+  }
+}

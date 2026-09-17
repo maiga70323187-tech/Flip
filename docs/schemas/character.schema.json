@@ -1,0 +1,200 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Flip Character Package",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "id",
+    "kind",
+    "rigProfile",
+    "views",
+    "parts",
+    "slots",
+    "bones",
+    "capabilities"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
+    },
+    "name": {
+      "type": "string"
+    },
+    "kind": {
+      "enum": [
+        "human",
+        "quadruped",
+        "creature",
+        "objectCharacter"
+      ]
+    },
+    "rigProfile": {
+      "enum": [
+        "humanoid",
+        "quadruped",
+        "custom",
+        "none"
+      ]
+    },
+    "defaultView": {
+      "type": "string"
+    },
+    "styleProfile": {
+      "type": "object"
+    },
+    "views": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object"
+      }
+    },
+    "parts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "source"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "view": {
+            "type": "string"
+          },
+          "bone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pivot": {
+            "type": "object",
+            "required": [
+              "x",
+              "y"
+            ],
+            "properties": {
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              }
+            }
+          },
+          "zIndex": {
+            "type": "integer"
+          },
+          "variantGroup": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "slots": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "bone"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "bone": {
+            "type": "string"
+          },
+          "part": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "zIndex": {
+            "type": "integer"
+          }
+        }
+      }
+    },
+    "bones": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "parent": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          },
+          "length": {
+            "type": "number",
+            "minimum": 0
+          },
+          "rotation": {
+            "type": "number"
+          },
+          "limits": {
+            "type": "object",
+            "properties": {
+              "min": {
+                "type": "number"
+              },
+              "max": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      }
+    },
+    "ikChains": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "expressions": {
+      "type": "object"
+    },
+    "poses": {
+      "type": "object"
+    },
+    "clips": {
+      "type": "object"
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "boolean"
+      }
+    }
+  }
+}

@@ -64,6 +64,18 @@ Exemple procédural : `node scripts/seed-example.mjs` crée un projet « balle q
 - **ChatGPT (Actions)** : importer `backend/openapi.json` dans un GPT personnalisé. Aucune clé n'est requise pour l'usage local.
 - **Autres clients** : appeler l'API HTTP directement, en suivant l'OpenAPI.
 
+## Base de connaissances personnages 2D
+
+`docs/knowledge/` — 14 documents qui définissent ce qu'est un personnage
+2D professionnel (identité, parties, vues, pivots, rigs, expressions,
+poses, clips, contrat agent IA). `docs/schemas/` fournit les schémas
+JSON validables (character, animation-clip, semantic-command).
+`docs/examples/` fournit un humanoïde et un quadrupède complets.
+
+Toute modification du moteur de personnages, du rigging, de l'animation
+ou du MCP doit d'abord lire `CLAUDE.md` à la racine puis
+`docs/knowledge/`. Voir aussi `docs/README_KNOWLEDGE_BASE.md`.
+
 ## Provenance
 
 Le dossier `recovered/` conserve la version précédente (archive originale « requin » et plan d'architecture) telle que sauvegardée. Le dossier `input/` contient le storyboard, l'audio et la transcription initiaux. Le socle actif (`backend/`, `frontend/`, `mcp-server/`) a été **refondu** pour retirer toute dépendance à un modèle IA externe et mettre en place le moteur vectoriel + frame-by-frame décrit ci-dessus.
