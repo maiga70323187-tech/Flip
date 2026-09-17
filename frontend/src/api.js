@@ -25,6 +25,9 @@ export const api = {
   patchShape:    (id, lid, sid, body) => j(`/api/projects/${id}/layers/${lid}/shapes/${sid}`, { method: 'PATCH', body }),
   deleteShape:   (id, lid, sid) => j(`/api/projects/${id}/layers/${lid}/shapes/${sid}`, { method: 'DELETE' }),
   addKeyframe:   (id, lid, sid, body) => j(`/api/projects/${id}/layers/${lid}/shapes/${sid}/keyframes`, { method: 'POST', body }),
+  addDef:        (id, body)  => j(`/api/projects/${id}/defs`, { method: 'POST', body }),
+  addDecor:      (id, body)  => j(`/api/projects/${id}/decor`, { method: 'POST', body }),
+  export:        (id, body)  => j(`/api/projects/${id}/export`, { method: 'POST', body }),
   render:        (id, t)     => `${BASE}/api/projects/${id}/render?t_ms=${t}`,
   manifest:      (id)        => j(`/api/projects/${id}/manifest`),
 };

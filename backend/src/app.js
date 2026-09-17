@@ -11,6 +11,7 @@ import {
   assertKeyframeInput, assertRasterFrameInput, assertReorder,
 } from './lib/validate.js';
 import { renderFrameSvg, renderManifest } from './services/render.js';
+import { generateDecor, DECOR_PRESETS } from './services/decor.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const dataRoot = process.env.FLIP_DATA_DIR ?? path.resolve(here, '../data/projects');
@@ -128,6 +129,32 @@ export function createApp() {
   // ---------- symbols ----------
   app.post('/api/projects/:id/symbols', wrap(async (req, res) => {
     ok(res, await store.addSymbol(req.params.id, req.body), 201);
+  }));
+
+  // ---------- defs (gradients) ----------
+  app.post('/api/projects/:id/defs', wrap(async (req, res) => {
+    ok(res, await store.addDef(req.params.id, req.body), 201);
+  }));
+  app.delete('/api/projects/:id/defs/:defId', wrap(async (req, res) => {
+    res.status(await store.deleteDef(req.params.id, req.params.defId) ? 204 : 404).end();
+  }));
+
+  // ---------- décor procédural ----------
+  app.post('/api/projects/:id/decor', wrap(async (req, res) => {
+    const p = await store.getProject(req.params.id);
+    if (!p) return notFound(res);
+    const preset = req.body.preset;
+    if (!DECOR_PRESETS.includes(preset)) return res.status(400).json({ error: `preset must be one of ${DECOR_PRESETS.join(', ')}` });
+    const { shapes, defs } = generateDecor({ preset, width: p.width, height: p.height, seed: Number(req.body.seed ?? Date.now() & 0xffff) });
+    let layer = null;
+    await store.mutate(p.id, pr => {
+      if (!pr.defs) pr.defs = [];
+      pr.defs.push(...defs);
+      layer = { id: crypto.randomUUID(), kind: 'vector', name: `Décor: ${preset}`, visible: true, opacity: 1, locked: false, shapes, bones: [] };
+      // décor sous les autres calques
+      pr.layers.unshift(layer);
+    });
+    res.status(201).json({ layer_id: layer.id, defs_added: defs.length, shapes_added: shapes.length });
   }));
 
   // ---------- audio ----------

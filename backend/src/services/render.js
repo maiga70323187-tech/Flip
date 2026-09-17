@@ -2,12 +2,14 @@
 // Interpolation des keyframes -> valeurs -> SVG à un instant t.
 
 import { EASINGS } from '../lib/model.js';
+import { cubicBezier } from '../lib/bezier.js';
 
-function easingCurve(name) {
+function easingCurve(name, bezier) {
+  if (name === 'bezier' && Array.isArray(bezier) && bezier.length === 4) return cubicBezier(...bezier);
   switch (name) {
-    case 'ease-in':     return (t) => t * t;
-    case 'ease-out':    return (t) => 1 - (1 - t) * (1 - t);
-    case 'ease-in-out': return (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+    case 'ease-in':     return cubicBezier(0.42, 0, 1, 1);
+    case 'ease-out':    return cubicBezier(0, 0, 0.58, 1);
+    case 'ease-in-out': return cubicBezier(0.42, 0, 0.58, 1);
     case 'step':        return (t) => (t < 1 ? 0 : 1);
     case 'linear':
     default:            return (t) => t;
@@ -27,7 +29,7 @@ export function sampleTrack(track, t_ms) {
     const a = track[i], b = track[i + 1];
     if (t_ms >= a.time_ms && t_ms <= b.time_ms) {
       const local = (t_ms - a.time_ms) / Math.max(1, b.time_ms - a.time_ms);
-      const eased = easingCurve(a.easing)(local);
+      const eased = easingCurve(a.easing, a.bezier)(local);
       return lerp(a.value, b.value, eased);
     }
   }
@@ -55,7 +57,10 @@ function shapeToSvg(shape, t_ms) {
   const stroke = style.stroke ?? 'none';
   const strokeWidth = style.stroke_width ?? 0;
   const opacity = style.opacity ?? 1;
-  const attrs = `fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" opacity="${opacity}" transform="${tf}"`;
+  const linecap = style.stroke_linecap ?? 'round';
+  const linejoin = style.stroke_linejoin ?? 'round';
+  const dash = style.stroke_dasharray ? ` stroke-dasharray="${style.stroke_dasharray}"` : '';
+  const attrs = `fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" stroke-linecap="${linecap}" stroke-linejoin="${linejoin}"${dash} opacity="${opacity}" transform="${tf}"`;
   switch (shape.type) {
     case 'rect':    return `<rect x="${-((props.width ?? 0) * transform.anchor_x)}" y="${-((props.height ?? 0) * transform.anchor_y)}" width="${props.width}" height="${props.height}" rx="${props.rx ?? 0}" ry="${props.ry ?? 0}" ${attrs}/>`;
     case 'ellipse': return `<ellipse cx="0" cy="0" rx="${props.rx}" ry="${props.ry}" ${attrs}/>`;
@@ -69,8 +74,29 @@ function shapeToSvg(shape, t_ms) {
 
 function escapeXml(s) { return String(s).replace(/[<>&"']/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' }[c])); }
 
+function defsToSvg(project) {
+  if (!project.defs?.length) return '';
+  const parts = ['<defs>'];
+  for (const d of project.defs) {
+    if (d.kind === 'linearGradient') {
+      const attrs = `x1="${d.x1 ?? 0}" y1="${d.y1 ?? 0}" x2="${d.x2 ?? 1}" y2="${d.y2 ?? 0}"`;
+      parts.push(`<linearGradient id="${d.id}" ${attrs}>`);
+      for (const s of d.stops) parts.push(`<stop offset="${s.offset}" stop-color="${s.color}" stop-opacity="${s.opacity ?? 1}"/>`);
+      parts.push('</linearGradient>');
+    } else if (d.kind === 'radialGradient') {
+      const attrs = `cx="${d.cx ?? 0.5}" cy="${d.cy ?? 0.5}" r="${d.r ?? 0.5}"`;
+      parts.push(`<radialGradient id="${d.id}" ${attrs}>`);
+      for (const s of d.stops) parts.push(`<stop offset="${s.offset}" stop-color="${s.color}" stop-opacity="${s.opacity ?? 1}"/>`);
+      parts.push('</radialGradient>');
+    }
+  }
+  parts.push('</defs>');
+  return parts.join('');
+}
+
 export function renderFrameSvg(project, t_ms) {
-  const parts = [`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${project.width} ${project.height}" width="${project.width}" height="${project.height}">`];
+  const parts = [`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${project.width} ${project.height}" width="${project.width}" height="${project.height}" shape-rendering="geometricPrecision" text-rendering="optimizeLegibility">`];
+  parts.push(defsToSvg(project));
   parts.push(`<rect width="100%" height="100%" fill="${project.background}"/>`);
   for (const l of project.layers) {
     if (!l.visible) continue;

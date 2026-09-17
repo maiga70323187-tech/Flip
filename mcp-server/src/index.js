@@ -110,5 +110,21 @@ s.tool('export_project', 'Exporter le projet (json complet ou svg d\'un instant)
   { project_id: z.string(), format: z.enum(['json', 'svg']).optional(), t_ms: z.number().optional() },
   async ({ project_id, format, t_ms }) => asContent(await callApi(`/api/projects/${project_id}/export`, { method: 'POST', body: { format, t_ms } })));
 
+// ---------- defs (gradients) ----------
+const stopSchema = z.object({ offset: z.number(), color: z.string(), opacity: z.number().optional() });
+
+s.tool('add_linear_gradient', 'Ajouter un dégradé linéaire réutilisable (fill: url(#id))',
+  { project_id: z.string(), name: z.string().optional(), x1: z.number().optional(), y1: z.number().optional(), x2: z.number().optional(), y2: z.number().optional(), stops: z.array(stopSchema) },
+  async ({ project_id, ...body }) => asContent(await callApi(`/api/projects/${project_id}/defs`, { method: 'POST', body: { ...body, kind: 'linearGradient' } })));
+
+s.tool('add_radial_gradient', 'Ajouter un dégradé radial (fill: url(#id))',
+  { project_id: z.string(), name: z.string().optional(), cx: z.number().optional(), cy: z.number().optional(), r: z.number().optional(), stops: z.array(stopSchema) },
+  async ({ project_id, ...body }) => asContent(await callApi(`/api/projects/${project_id}/defs`, { method: 'POST', body: { ...body, kind: 'radialGradient' } })));
+
+// ---------- décor procédural ----------
+s.tool('apply_decor_preset', 'Appliquer un décor procédural (sky_day, sky_sunset, sky_night, mountains, grass_field). Un nouveau calque est créé sous les autres. 100 % local, déterministe via seed.',
+  { project_id: z.string(), preset: z.enum(['sky_day', 'sky_sunset', 'sky_night', 'mountains', 'grass_field']), seed: z.number().optional() },
+  async ({ project_id, preset, seed }) => asContent(await callApi(`/api/projects/${project_id}/decor`, { method: 'POST', body: { preset, seed } })));
+
 const transport = new StdioServerTransport();
 await s.connect(transport);

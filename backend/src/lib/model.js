@@ -19,6 +19,7 @@ export function newProject({ name = 'Nouveau projet', width = 1920, height = 108
     assets: [],
     symbols: [],
     layers: [],
+    defs: [],
     audio_tracks: [],
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
@@ -72,4 +73,12 @@ export function newKeyframe({ time_ms, value, easing = 'linear', bezier = null }
 
 export function newRasterFrame({ duration_ms = 83, image = null, strokes = [] } = {}) {
   return { id: uid(), duration_ms, image, strokes };
+}
+
+export function newLinearGradient({ name, x1 = 0, y1 = 0, x2 = 0, y2 = 1, stops = [{ offset: 0, color: '#fff' }, { offset: 1, color: '#000' }] } = {}) {
+  return { id: `grad-${uid().slice(0, 8)}`, kind: 'linearGradient', name: name ?? 'Dégradé', x1, y1, x2, y2, stops };
+}
+
+export function newRadialGradient({ name, cx = 0.5, cy = 0.5, r = 0.5, stops = [{ offset: 0, color: '#fff' }, { offset: 1, color: '#000' }] } = {}) {
+  return { id: `grad-${uid().slice(0, 8)}`, kind: 'radialGradient', name: name ?? 'Dégradé radial', cx, cy, r, stops };
 }

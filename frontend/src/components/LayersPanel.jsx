@@ -1,4 +1,4 @@
-export function LayersPanel({ project, onAddLayer, onDeleteLayer, onToggleVisible }) {
+export function LayersPanel({ project, activeLayerId, onActivateLayer, onAddLayer, onDeleteLayer, onToggleVisible }) {
   if (!project) return null;
   return (
     <div className="layers">
@@ -11,13 +11,16 @@ export function LayersPanel({ project, onAddLayer, onDeleteLayer, onToggleVisibl
       </header>
       <ul>
         {[...project.layers].reverse().map(l => (
-          <li key={l.id}>
+          <li key={l.id} className={l.id === activeLayerId ? 'active' : ''}>
             <input type="checkbox" checked={l.visible} onChange={() => onToggleVisible(l)}/>
-            <span>{l.kind === 'raster' ? '🖌️' : '⬢'} {l.name}</span>
+            <span className="lname" onClick={() => l.kind === 'vector' && onActivateLayer(l.id)}>
+              {l.kind === 'raster' ? '🖌️' : '⬢'} {l.name}
+            </span>
             <button onClick={() => onDeleteLayer(l)}>×</button>
           </li>
         ))}
       </ul>
+      <p className="hint">Cliquez sur un calque vectoriel pour le rendre actif (dessin, décor).</p>
     </div>
   );
 }

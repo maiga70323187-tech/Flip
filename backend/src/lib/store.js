@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { newProject, newVectorLayer, newRasterLayer, newShape, newKeyframe, newRasterFrame, newBone } from './model.js';
+import crypto from 'node:crypto';
+import { newProject, newVectorLayer, newRasterLayer, newShape, newKeyframe, newRasterFrame, newBone, newLinearGradient, newRadialGradient } from './model.js';
 
 export class JsonStore {
   constructor(root) { this.root = root; }
@@ -225,5 +226,25 @@ export class JsonStore {
       p.symbols.push(out);
     });
     return out;
+  }
+
+  // ---------- defs (gradients, motifs) ----------
+  async addDef(projectId, def) {
+    let out = null;
+    await this.mutate(projectId, p => {
+      if (!p.defs) p.defs = [];
+      out = def.kind === 'radialGradient' ? newRadialGradient(def) : newLinearGradient(def);
+      p.defs.push(out);
+    });
+    return out;
+  }
+
+  async deleteDef(projectId, defId) {
+    let ok = false;
+    await this.mutate(projectId, p => {
+      const i = (p.defs ?? []).findIndex(d => d.id === defId);
+      if (i >= 0) { p.defs.splice(i, 1); ok = true; }
+    });
+    return ok;
   }
 }

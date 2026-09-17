@@ -1,0 +1,54 @@
+// Lissage de tracé libre : simplification (Ramer-Douglas-Peucker)
+// puis conversion en chemin SVG Bézier via Catmull-Rom.
+
+function distToSegment2(p, a, b) {
+  const dx = b[0] - a[0], dy = b[1] - a[1];
+  const l2 = dx * dx + dy * dy;
+  if (l2 === 0) { const px = p[0] - a[0], py = p[1] - a[1]; return px * px + py * py; }
+  const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2));
+  const cx = a[0] + t * dx, cy = a[1] + t * dy;
+  const ex = p[0] - cx, ey = p[1] - cy;
+  return ex * ex + ey * ey;
+}
+
+export function simplify(points, tolerance = 2) {
+  if (points.length < 3) return points.slice();
+  const tol2 = tolerance * tolerance;
+  const stack = [[0, points.length - 1]];
+  const keep = new Array(points.length).fill(false);
+  keep[0] = keep[points.length - 1] = true;
+  while (stack.length) {
+    const [i, j] = stack.pop();
+    let maxD = 0, idx = -1;
+    for (let k = i + 1; k < j; k++) {
+      const d = distToSegment2(points[k], points[i], points[j]);
+      if (d > maxD) { maxD = d; idx = k; }
+    }
+    if (idx !== -1 && maxD > tol2) {
+      keep[idx] = true;
+      stack.push([i, idx], [idx, j]);
+    }
+  }
+  return points.filter((_, k) => keep[k]);
+}
+
+// Catmull-Rom -> chemin Bézier cubique
+export function toBezierPath(points) {
+  if (points.length === 0) return '';
+  if (points.length === 1) return `M ${fmt(points[0][0])} ${fmt(points[0][1])}`;
+  let d = `M ${fmt(points[0][0])} ${fmt(points[0][1])}`;
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[Math.max(0, i - 1)];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[Math.min(points.length - 1, i + 2)];
+    const c1x = p1[0] + (p2[0] - p0[0]) / 6;
+    const c1y = p1[1] + (p2[1] - p0[1]) / 6;
+    const c2x = p2[0] - (p3[0] - p1[0]) / 6;
+    const c2y = p2[1] - (p3[1] - p1[1]) / 6;
+    d += ` C ${fmt(c1x)} ${fmt(c1y)}, ${fmt(c2x)} ${fmt(c2y)}, ${fmt(p2[0])} ${fmt(p2[1])}`;
+  }
+  return d;
+}
+
+function fmt(n) { return Math.round(n * 100) / 100; }

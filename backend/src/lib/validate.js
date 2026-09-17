@@ -39,6 +39,9 @@ export function assertKeyframeInput(body = {}) {
   if (!isNum(body.time_ms) || body.time_ms < 0) fail('time_ms must be a non-negative number');
   if (body.value === undefined || body.value === null) fail('value is required');
   if (body.easing !== undefined && !EASINGS.includes(body.easing)) fail(`easing must be one of ${EASINGS.join(', ')}`);
+  if (body.easing === 'bezier') {
+    if (!Array.isArray(body.bezier) || body.bezier.length !== 4 || body.bezier.some(v => !isNum(v))) fail('bezier must be [x1,y1,x2,y2] with 4 numbers');
+  }
 }
 
 export function assertRasterFrameInput(body = {}) {
