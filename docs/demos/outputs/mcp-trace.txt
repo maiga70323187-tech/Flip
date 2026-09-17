@@ -1,0 +1,131 @@
+
+─── étape 1 ─────────────────────────────
+AGENT dit    → list_character_examples
+ARGS         → {}
+MOTEUR répond → [
+  {
+    "key": "humanoid",
+    "file": "humanoid.example.json"
+  },
+  {
+    "key": "quadruped-cat",
+    "file": "quadruped-cat.example.json"
+  }
+]
+
+─── étape 2 ─────────────────────────────
+AGENT dit    → load_character_example
+ARGS         → {
+  "key": "humanoid"
+}
+MOTEUR répond → <Character JSON, 2216 octets, 5 parts, 9 bones>
+
+─── étape 3 ─────────────────────────────
+AGENT dit    → create_project
+ARGS         → {
+  "name": "Démo langage MCP",
+  "width": 800,
+  "height": 600,
+  "fps": 24,
+  "duration_ms": 3000
+}
+MOTEUR répond → {
+  "id": "edba3135-5eaf-40a6-9d0d-df8818dace9a",
+  "name": "Démo langage MCP",
+  "width": 800,
+  "height": 600,
+  "fps": 24,
+  "duration_ms": 3000,
+  "background": "#ffffff",
+  "assets": [],
+  "symbols": [],
+  "layers": [
+    {
+      "id": "eebdba89-bcf7-482c-b428-f6dd79f855ad",
+      "kind": "vector",
+      "name": "Décor",
+      "visible": true,
+      "opacity": 1,
+      "locked": false,
+      
+
+─── étape 4 ─────────────────────────────
+AGENT dit    → apply_decor_preset
+ARGS         → {
+  "project_id": "edba3135-5eaf-40a6-9d0d-df8818dace9a",
+  "preset": "sky_sunset",
+  "seed": 7
+}
+MOTEUR répond → {
+  "layer_id": "0a671564-1ecd-4845-8310-fce9ed079d46",
+  "defs_added": 3,
+  "shapes_added": 6
+}
+
+─── étape 5 ─────────────────────────────
+AGENT dit    → add_character
+ARGS         → {
+  "project_id": "edba3135-5eaf-40a6-9d0d-df8818dace9a",
+  "character": "<Character JSON>"
+}
+MOTEUR répond → {
+  "id": "human_example_01",
+  "name": "Humanoid Example"
+}
+
+─── étape 6 ─────────────────────────────
+AGENT dit    → get_character_capabilities
+ARGS         → {
+  "project_id": "edba3135-5eaf-40a6-9d0d-df8818dace9a",
+  "character_id": "human_example_01"
+}
+MOTEUR répond → {
+  "expressions": [
+    "neutral",
+    "happy",
+    "sad",
+    "angry",
+    "surprised",
+    "eyesClosed"
+  ],
+  "capabilities": {
+    "canWave": true,
+    "canWalk": true,
+    "canRun": true,
+    "canLookAt": true,
+    "canBlink": true,
+    "supportsIKArms": true
+  }
+}
+
+─── étape 7 ─────────────────────────────
+AGENT dit    → set_character_state
+ARGS         → {
+  "project_id": "edba3135-5eaf-40a6-9d0d-df8818dace9a",
+  "character_id": "human_example_01",
+  "currentExpression": "happy",
+  "transform": {
+    "x": 400,
+    "y": 500,
+    "scale": 1.4
+  }
+}
+MOTEUR répond → {
+  "id": "human_example_01",
+  "currentExpression": "happy",
+  "transform": {
+    "x": 400,
+    "y": 500,
+    "rotation": 0,
+    "scale": 1.4
+  }
+}
+
+─── étape 8 : rendu ────────────────────────────
+MOTEUR expose /api/projects/edba3135-5eaf-40a6-9d0d-df8818dace9a/render?t_ms=0  et  /render.png
+PROJECT_ID=edba3135-5eaf-40a6-9d0d-df8818dace9a
+
+─── étape 9 : cas d'erreur ─────────────────────
+AGENT dit    → set_character_state (expression: ecstatic-super)
+MOTEUR      → HTTP 400
+              {"error":"expression ecstatic-super not declared on character human_example_01","code":"UNSUPPORTED_EXPRESSION","details":{"available":["neutral","happy","sad","angry","surprised","eyesClosed"]}}
