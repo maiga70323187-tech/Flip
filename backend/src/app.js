@@ -112,11 +112,11 @@ export function createApp() {
   app.post('/api/projects/:id/ik/solve', wrap(async (req, res) => {
     const p = await store.getProject(req.params.id);
     if (!p) return notFound(res);
-    const { layer_id, tip_bone_id, target_x, target_y, apply } = req.body ?? {};
+    const { layer_id, tip_bone_id, target_x, target_y, apply, chain_length } = req.body ?? {};
     const layer = p.layers.find(l => l.id === layer_id);
     if (!layer?.bones?.length) return res.status(400).json({ error: 'layer or bones not found' });
     const { computeBoneTransforms, ancestorChain, solveFABRIK } = await import('./services/rigging.js');
-    const chain = ancestorChain(layer.bones, tip_bone_id);
+    const chain = ancestorChain(layer.bones, tip_bone_id, chain_length ?? Infinity);
     if (!chain.length) return res.status(400).json({ error: 'tip bone not found' });
     const world = computeBoneTransforms(layer.bones);
     const root = world[chain[0].id];

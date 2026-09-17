@@ -31,10 +31,17 @@ function sampleTrack(track, t_ms) {
   return last.value;
 }
 
+function clampRotation(v, min, max) {
+  if (typeof min === 'number' && v < min) v = min;
+  if (typeof max === 'number' && v > max) v = max;
+  return v;
+}
+
 export function resolveBone(bone, t_ms) {
   const tracks = bone.tracks || {};
+  const raw = sampleTrack(tracks.rotation, t_ms) ?? bone.rotation ?? 0;
   return {
-    rotation: sampleTrack(tracks.rotation, t_ms) ?? bone.rotation ?? 0,
+    rotation: clampRotation(raw, bone.limit_min, bone.limit_max),
     length:   sampleTrack(tracks.length, t_ms)   ?? bone.length ?? 0,
     x:        sampleTrack(tracks.x, t_ms)        ?? bone.x ?? 0,
     y:        sampleTrack(tracks.y, t_ms)        ?? bone.y ?? 0,
@@ -123,17 +130,21 @@ export function solveFABRIK(bones, rootX, rootY, targetX, targetY, iterations = 
   }
   const rel = [];
   for (let i = 0; i < worldRots.length; i++) {
-    rel.push(worldRots[i] - (i === 0 ? 0 : worldRots[i - 1]));
+    let r = worldRots[i] - (i === 0 ? 0 : worldRots[i - 1]);
+    // contraintes d'angle par os
+    const b = bones[i];
+    r = clampRotation(r, b.limit_min, b.limit_max);
+    rel.push(r);
   }
   return rel;
 }
 
 // Chaîne des ancêtres d'un os (racine -> os), utile pour l'IK.
-export function ancestorChain(bones, boneId) {
+export function ancestorChain(bones, boneId, maxDepth = Infinity) {
   const byId = Object.fromEntries(bones.map(b => [b.id, b]));
   const chain = [];
   let cur = byId[boneId];
-  while (cur) {
+  while (cur && chain.length < maxDepth) {
     chain.unshift(cur);
     cur = cur.parent_id ? byId[cur.parent_id] : null;
   }

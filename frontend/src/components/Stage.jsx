@@ -59,7 +59,7 @@ function bboxOf(shape) {
   }
 }
 
-export function Stage({ project, t_ms, onSelectShape, selectedId, tool, drawColor, strokeWidth, filled, onionSkin, activeVectorLayerId, onDraw, onDragTransform, onEditAnchors, selectedBone, onSelectBone, onCreateBone, onPatchBone, onSolveIK }) {
+export function Stage({ project, t_ms, onSelectShape, selectedId, tool, drawColor, strokeWidth, filled, onionSkin, activeVectorLayerId, onDraw, onDragTransform, onEditAnchors, selectedBone, onSelectBone, onCreateBone, onPatchBone, onSolveIK, ikChainLength = 2 }) {
   const svgRef = useRef(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -222,7 +222,7 @@ export function Stage({ project, t_ms, onSelectShape, selectedId, tool, drawColo
     }
     if (boneTipDrag) {
       const { layer, bone } = boneTipDrag;
-      const chain = ancestorChain(layer.bones, bone.id);
+      const chain = ancestorChain(layer.bones, bone.id, ikChainLength);
       const bt = computeBoneTransforms(layer.bones, t_ms);
       const root = bt[chain[0].id];
       const rotations = solveFABRIK(chain, root.x, root.y, x, y);

@@ -57,3 +57,32 @@ test('ancestorChain returns root -> target order', () => {
   const chain = ancestorChain(bones, 'c');
   assert.deepEqual(chain.map(b => b.id), ['a', 'b', 'c']);
 });
+
+test('ancestorChain honors maxDepth (IK chain length)', () => {
+  const bones = [
+    { id: 'a', parent_id: null, length: 10, rotation: 0 },
+    { id: 'b', parent_id: 'a', length: 10, rotation: 0 },
+    { id: 'c', parent_id: 'b', length: 10, rotation: 0 },
+    { id: 'd', parent_id: 'c', length: 10, rotation: 0 },
+  ];
+  const chain = ancestorChain(bones, 'd', 2);
+  assert.deepEqual(chain.map(b => b.id), ['c', 'd']);
+});
+
+test('resolveBone clamps rotation to limit_min / limit_max', async () => {
+  const { resolveBone } = await import('../src/services/rigging.js');
+  const bone = { id: 'x', parent_id: null, length: 10, rotation: 200, limit_min: -45, limit_max: 45 };
+  assert.equal(resolveBone(bone, 0).rotation, 45);
+  const bone2 = { ...bone, rotation: -200 };
+  assert.equal(resolveBone(bone2, 0).rotation, -45);
+});
+
+test('FABRIK output respects per-bone limits', () => {
+  const bones = [
+    { id: 'r', parent_id: null, x: 0, y: 0, length: 100, rotation: 0, limit_min: -10, limit_max: 10 },
+    { id: 'c', parent_id: 'r', length: 100, rotation: 0 },
+  ];
+  const rel = solveFABRIK(bones, 0, 0, 0, 200); // cible qui exige rotation forte
+  // le premier os ne peut pas passer +/-10°
+  assert.ok(rel[0] >= -10 - 1e-6 && rel[0] <= 10 + 1e-6, `rel[0] = ${rel[0]}`);
+});

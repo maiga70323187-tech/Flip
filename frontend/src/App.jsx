@@ -6,6 +6,7 @@ import { LayersPanel } from './components/LayersPanel.jsx';
 import { Inspector } from './components/Inspector.jsx';
 import { Toolbox } from './components/Toolbox.jsx';
 import { DecorPresets } from './components/DecorPresets.jsx';
+import { BonesPanel } from './components/BonesPanel.jsx';
 
 export default function App() {
   const [projects, setProjects] = useState([]);
@@ -21,6 +22,7 @@ export default function App() {
   const [onionSkin, setOnionSkin] = useState(false);
   const [activeLayerId, setActiveLayerId] = useState(null);
   const [selectedBone, setSelectedBone] = useState(null);
+  const [ikChainLength, setIkChainLength] = useState(2);
 
   const refresh = () => api.listProjects().then(setProjects).catch(e => setError(e.message));
   const load = async (id) => { const p = await api.getProject(id); setProject(p); setT(0); setSelected(null); setActiveLayerId(p.layers.find(l => l.kind === 'vector')?.id ?? null); };
@@ -28,6 +30,20 @@ export default function App() {
   const guarded = fn => (...args) => fn(...args).catch(e => setError(e.message)).then(reload);
 
   useEffect(() => { refresh(); }, []);
+
+  useEffect(() => {
+    const onKey = (e) => {
+      // n'intercepte pas quand on tape dans un champ
+      const tag = document.activeElement?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedBone?.bone?.id) {
+        e.preventDefault();
+        onDeleteBone(selectedBone.layer_id, selectedBone.bone.id);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selectedBone, project?.id]);
 
   const activeVectorLayerId = useMemo(() => {
     if (!project) return null;
@@ -112,6 +128,10 @@ export default function App() {
       }, 120);
     } catch (e) { setError(e.message); }
   };
+  const onDeleteBone = async (layer_id, bone_id) => {
+    try { await api.deleteBone(project.id, layer_id, bone_id); if (selectedBone?.bone?.id === bone_id) setSelectedBone(null); reload(); }
+    catch (e) { setError(e.message); }
+  };
   const onSolveIK = async (layer_id, boneIds, rotations) => {
     // Update local
     setProject(pr => {
@@ -179,6 +199,16 @@ export default function App() {
                 onToggleVisible={l => guarded(() => api.patchLayer(project.id, l.id, { visible: !l.visible }))()}
               />
               <DecorPresets onApply={onApplyDecor}/>
+              <BonesPanel
+                project={project}
+                activeLayerId={activeVectorLayerId}
+                selectedBone={selectedBone}
+                onSelectBone={setSelectedBone}
+                onPatchBone={onPatchBone}
+                onDeleteBone={onDeleteBone}
+                ikChainLength={ikChainLength}
+                setIkChainLength={setIkChainLength}
+              />
             </div>
             <Stage
               project={project}
@@ -199,6 +229,7 @@ export default function App() {
               onCreateBone={onCreateBone}
               onPatchBone={onPatchBone}
               onSolveIK={onSolveIK}
+              ikChainLength={ikChainLength}
             />
             <Inspector
               project={project}
