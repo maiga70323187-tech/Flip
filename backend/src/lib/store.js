@@ -161,6 +161,51 @@ export class JsonStore {
     return ok;
   }
 
+  async patchKeyframe(projectId, layerId, shapeId, property, keyframeId, patch) {
+    let out = null;
+    await this.mutate(projectId, p => {
+      const s = p.layers.find(x => x.id === layerId)?.shapes?.find(x => x.id === shapeId);
+      if (!s?.tracks?.[property]) return;
+      const kf = s.tracks[property].find(k => k.id === keyframeId);
+      if (!kf) return;
+      if (patch.time_ms !== undefined) kf.time_ms = patch.time_ms;
+      if (patch.value !== undefined) kf.value = patch.value;
+      if (patch.easing !== undefined) kf.easing = patch.easing;
+      if (patch.bezier !== undefined) kf.bezier = patch.bezier;
+      s.tracks[property].sort((a, b) => a.time_ms - b.time_ms);
+      out = kf;
+    });
+    return out;
+  }
+
+  async patchBoneKeyframe(projectId, layerId, boneId, property, keyframeId, patch) {
+    let out = null;
+    await this.mutate(projectId, p => {
+      const b = p.layers.find(x => x.id === layerId)?.bones?.find(x => x.id === boneId);
+      if (!b?.tracks?.[property]) return;
+      const kf = b.tracks[property].find(k => k.id === keyframeId);
+      if (!kf) return;
+      if (patch.time_ms !== undefined) kf.time_ms = patch.time_ms;
+      if (patch.value !== undefined) kf.value = patch.value;
+      if (patch.easing !== undefined) kf.easing = patch.easing;
+      if (patch.bezier !== undefined) kf.bezier = patch.bezier;
+      b.tracks[property].sort((a, b) => a.time_ms - b.time_ms);
+      out = kf;
+    });
+    return out;
+  }
+
+  async deleteBoneKeyframe(projectId, layerId, boneId, property, keyframeId) {
+    let ok = false;
+    await this.mutate(projectId, p => {
+      const b = p.layers.find(x => x.id === layerId)?.bones?.find(x => x.id === boneId);
+      if (!b?.tracks?.[property]) return;
+      const i = b.tracks[property].findIndex(k => k.id === keyframeId);
+      if (i >= 0) { b.tracks[property].splice(i, 1); ok = true; }
+    });
+    return ok;
+  }
+
   // ---------- bones (rigging) ----------
   async addBone(projectId, layerId, input) {
     let out = null;

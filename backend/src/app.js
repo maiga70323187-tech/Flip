@@ -92,6 +92,22 @@ export function createApp() {
     if (!property) return res.status(400).json({ error: 'property query param required' });
     res.status(await store.deleteKeyframe(req.params.id, req.params.layerId, req.params.shapeId, property, req.params.keyframeId) ? 204 : 404).end();
   }));
+  app.patch('/api/projects/:id/layers/:layerId/shapes/:shapeId/keyframes/:keyframeId', wrap(async (req, res) => {
+    const { property } = req.query;
+    if (!property) return res.status(400).json({ error: 'property query param required' });
+    ok(res, await store.patchKeyframe(req.params.id, req.params.layerId, req.params.shapeId, property, req.params.keyframeId, req.body));
+  }));
+
+  app.patch('/api/projects/:id/layers/:layerId/bones/:boneId/keyframes/:keyframeId', wrap(async (req, res) => {
+    const { property } = req.query;
+    if (!property) return res.status(400).json({ error: 'property query param required' });
+    ok(res, await store.patchBoneKeyframe(req.params.id, req.params.layerId, req.params.boneId, property, req.params.keyframeId, req.body));
+  }));
+  app.delete('/api/projects/:id/layers/:layerId/bones/:boneId/keyframes/:keyframeId', wrap(async (req, res) => {
+    const { property } = req.query;
+    if (!property) return res.status(400).json({ error: 'property query param required' });
+    res.status(await store.deleteBoneKeyframe(req.params.id, req.params.layerId, req.params.boneId, property, req.params.keyframeId) ? 204 : 404).end();
+  }));
 
   // ---------- bones ----------
   app.post('/api/projects/:id/layers/:layerId/bones', wrap(async (req, res) => {

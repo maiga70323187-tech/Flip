@@ -104,6 +104,14 @@ s.tool('add_keyframe', 'Ajouter une keyframe pour animer une propriété d\'une 
   { project_id: z.string(), layer_id: z.string(), shape_id: z.string(), property: z.enum(['x', 'y', 'rotation', 'scale_x', 'scale_y', 'opacity', 'fill', 'stroke', 'stroke_width', 'd']), time_ms: z.number(), value: z.any(), easing: z.enum(['linear', 'ease-in', 'ease-out', 'ease-in-out', 'step', 'bezier']).optional() },
   async ({ project_id, layer_id, shape_id, ...body }) => asContent(await callApi(`/api/projects/${project_id}/layers/${layer_id}/shapes/${shape_id}/keyframes`, { method: 'POST', body })));
 
+s.tool('patch_keyframe', 'Modifier une keyframe existante (time_ms, value, easing, bezier)',
+  { project_id: z.string(), layer_id: z.string(), shape_id: z.string(), property: z.string(), keyframe_id: z.string(), time_ms: z.number().optional(), value: z.any().optional(), easing: z.enum(['linear', 'ease-in', 'ease-out', 'ease-in-out', 'step', 'bezier']).optional(), bezier: z.array(z.number()).length(4).optional() },
+  async ({ project_id, layer_id, shape_id, property, keyframe_id, ...body }) => asContent(await callApi(`/api/projects/${project_id}/layers/${layer_id}/shapes/${shape_id}/keyframes/${keyframe_id}?property=${encodeURIComponent(property)}`, { method: 'PATCH', body })));
+
+s.tool('delete_keyframe', 'Supprimer une keyframe',
+  { project_id: z.string(), layer_id: z.string(), shape_id: z.string(), property: z.string(), keyframe_id: z.string() },
+  async ({ project_id, layer_id, shape_id, property, keyframe_id }) => { await callApi(`/api/projects/${project_id}/layers/${layer_id}/shapes/${shape_id}/keyframes/${keyframe_id}?property=${encodeURIComponent(property)}`, { method: 'DELETE' }); return asContent({ ok: true }); });
+
 s.tool('tween_property', 'Créer un tween en posant deux keyframes (début et fin)',
   { project_id: z.string(), layer_id: z.string(), shape_id: z.string(), property: z.string(), from: z.any(), to: z.any(), start_ms: z.number(), end_ms: z.number(), easing: z.string().optional() },
   async ({ project_id, layer_id, shape_id, property, from, to, start_ms, end_ms, easing }) => {

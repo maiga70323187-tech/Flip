@@ -7,6 +7,7 @@ import { Inspector } from './components/Inspector.jsx';
 import { Toolbox } from './components/Toolbox.jsx';
 import { DecorPresets } from './components/DecorPresets.jsx';
 import { BonesPanel } from './components/BonesPanel.jsx';
+import { GraphEditor } from './components/GraphEditor.jsx';
 
 export default function App() {
   const [projects, setProjects] = useState([]);
@@ -23,6 +24,7 @@ export default function App() {
   const [activeLayerId, setActiveLayerId] = useState(null);
   const [selectedBone, setSelectedBone] = useState(null);
   const [ikChainLength, setIkChainLength] = useState(2);
+  const [graphOpen, setGraphOpen] = useState(false);
 
   const refresh = () => api.listProjects().then(setProjects).catch(e => setError(e.message));
   const load = async (id) => { const p = await api.getProject(id); setProject(p); setT(0); setSelected(null); setActiveLayerId(p.layers.find(l => l.kind === 'vector')?.id ?? null); };
@@ -128,6 +130,50 @@ export default function App() {
       }, 120);
     } catch (e) { setError(e.message); }
   };
+  // ---------- graph editor : édition de keyframes existantes ----------
+  const pendingKfPatch = useRef({});
+  const flushKfPatches = async () => {
+    const entries = Object.entries(pendingKfPatch.current);
+    pendingKfPatch.current = {};
+    if (!selected?.shape || !entries.length) return;
+    for (const [key, patch] of entries) {
+      const [property, kf_id] = key.split('|');
+      try { await api.patchKeyframe(project.id, selected.layer_id, selected.shape.id, property, kf_id, patch); }
+      catch (e) { setError(e.message); }
+    }
+    reload();
+  };
+  const onPatchKeyframe = ({ property, kf_id, patch, phase }) => {
+    // Optimistic update local
+    setProject(pr => {
+      if (!pr || !selected) return pr;
+      const layers = pr.layers.map(l => {
+        if (l.id !== selected.layer_id) return l;
+        const shapes = l.shapes.map(s => {
+          if (s.id !== selected.shape.id) return s;
+          const track = (s.tracks?.[property] ?? []).map(k => k.id === kf_id ? { ...k, ...patch } : k);
+          return { ...s, tracks: { ...s.tracks, [property]: track.sort((a, b) => a.time_ms - b.time_ms) } };
+        });
+        return { ...l, shapes };
+      });
+      // Aussi mettre à jour selected.shape pour que la preview suive
+      const newShape = layers.find(l => l.id === selected.layer_id).shapes.find(s => s.id === selected.shape.id);
+      setSelected({ layer_id: selected.layer_id, shape: newShape });
+      return { ...pr, layers };
+    });
+    // Queue persist
+    pendingKfPatch.current[`${property}|${kf_id}`] = { ...(pendingKfPatch.current[`${property}|${kf_id}`] ?? {}), ...patch };
+    if (phase === 'end') {
+      clearTimeout(pendingKfPatch.current._t);
+      pendingKfPatch.current._t = setTimeout(flushKfPatches, 40);
+    }
+  };
+  const onDeleteKeyframe = async ({ property, id }) => {
+    if (!selected?.shape) return;
+    try { await api.deleteKeyframe(project.id, selected.layer_id, selected.shape.id, property, id); reload(); }
+    catch (e) { setError(e.message); }
+  };
+
   const onDeleteBone = async (layer_id, bone_id) => {
     try { await api.deleteBone(project.id, layer_id, bone_id); if (selectedBone?.bone?.id === bone_id) setSelectedBone(null); reload(); }
     catch (e) { setError(e.message); }
@@ -176,6 +222,7 @@ export default function App() {
         </select>
         <button onClick={async () => { const p = await api.createProject({ name: `Projet ${projects.length + 1}` }); await refresh(); load(p.id); }}>Nouveau projet</button>
         {project && <button onClick={exportSvg}>Voir SVG</button>}
+        {project && <button onClick={() => setGraphOpen(g => !g)} className={graphOpen ? 'active' : ''}>📈 Graph editor</button>}
         <a href={`${api.base}/api/openapi.json`} target="_blank" rel="noreferrer">OpenAPI</a>
       </section>
 
@@ -241,6 +288,17 @@ export default function App() {
             />
           </section>
           <Timeline project={project} t_ms={t_ms} setT={setT} playing={playing} setPlaying={setPlaying}/>
+          {graphOpen && (
+            <GraphEditor
+              project={project}
+              t_ms={t_ms}
+              setT={setT}
+              selected={selected}
+              onPatchKeyframe={onPatchKeyframe}
+              onDeleteKeyframe={onDeleteKeyframe}
+              onClose={() => setGraphOpen(false)}
+            />
+          )}
         </>
       )}
     </main>

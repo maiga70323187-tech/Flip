@@ -25,6 +25,8 @@ export const api = {
   patchShape:    (id, lid, sid, body) => j(`/api/projects/${id}/layers/${lid}/shapes/${sid}`, { method: 'PATCH', body }),
   deleteShape:   (id, lid, sid) => j(`/api/projects/${id}/layers/${lid}/shapes/${sid}`, { method: 'DELETE' }),
   addKeyframe:   (id, lid, sid, body) => j(`/api/projects/${id}/layers/${lid}/shapes/${sid}/keyframes`, { method: 'POST', body }),
+  patchKeyframe: (id, lid, sid, prop, kfid, body) => j(`/api/projects/${id}/layers/${lid}/shapes/${sid}/keyframes/${kfid}?property=${encodeURIComponent(prop)}`, { method: 'PATCH', body }),
+  deleteKeyframe:(id, lid, sid, prop, kfid) => j(`/api/projects/${id}/layers/${lid}/shapes/${sid}/keyframes/${kfid}?property=${encodeURIComponent(prop)}`, { method: 'DELETE' }),
   addBone:       (id, lid, body) => j(`/api/projects/${id}/layers/${lid}/bones`, { method: 'POST', body }),
   patchBone:     (id, lid, bid, body) => j(`/api/projects/${id}/layers/${lid}/bones/${bid}`, { method: 'PATCH', body }),
   deleteBone:    (id, lid, bid) => j(`/api/projects/${id}/layers/${lid}/bones/${bid}`, { method: 'DELETE' }),
