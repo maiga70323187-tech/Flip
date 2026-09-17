@@ -218,5 +218,22 @@ s.tool('load_character_example', 'Charger un exemple depuis la KB par sa clé (e
   { key: z.string() },
   async ({ key }) => asContent(await callApi(`/api/knowledge/characters/${key}`)));
 
+// ---------- Phase 2 : slots + rig humanoïde ----------
+s.tool('build_humanoid_rig', 'Créer un personnage humanoïde complet (bones + slots + parts) conforme à docs/knowledge/04_RIGGING_AND_PIVOTS.md. Aucune image d\'asset n\'est attachée ; utiliser set_character_part_asset ensuite.',
+  { project_id: z.string(), name: z.string().optional(), origin_x: z.number().optional(), origin_y: z.number().optional(), style_profile: z.any().optional() },
+  async ({ project_id, name, origin_x, origin_y, style_profile }) => asContent(await callApi(`/api/projects/${project_id}/characters/humanoid_rig`, { method: 'POST', body: { name, originX: origin_x, originY: origin_y, styleProfile: style_profile } })));
+
+s.tool('set_character_variant', 'Sélectionner quelle variante de part est visible pour un slot donné (ex: slot_id="hand_front", part_id="hand_R_fist"). Refuse MISSING_SLOT/MISSING_ASSET si l\'id est inconnu.',
+  { project_id: z.string(), character_id: z.string(), slot_id: z.string(), part_id: z.string().nullable() },
+  async ({ project_id, character_id, slot_id, part_id }) => asContent(await callApi(`/api/projects/${project_id}/characters/${character_id}/slots/${slot_id}`, { method: 'PATCH', body: { part: part_id } })));
+
+s.tool('set_character_state', 'Modifier la vue/expression courante et le placement (transform) d\'un personnage. Refuse MISSING_VIEW/UNSUPPORTED_EXPRESSION si non déclarés.',
+  { project_id: z.string(), character_id: z.string(), currentView: z.string().optional(), currentExpression: z.string().optional(), transform: z.object({ x: z.number().optional(), y: z.number().optional(), rotation: z.number().optional(), scale: z.number().optional() }).optional(), visible: z.boolean().optional() },
+  async ({ project_id, character_id, ...body }) => asContent(await callApi(`/api/projects/${project_id}/characters/${character_id}`, { method: 'PATCH', body })));
+
+s.tool('set_character_part_asset', 'Attacher une image (data URL ou http URL) à une clé de part (la valeur de part.source). Enregistré dans character.assetRoots.',
+  { project_id: z.string(), character_id: z.string(), part_source: z.string(), asset_url: z.string() },
+  async ({ project_id, character_id, part_source, asset_url }) => asContent(await callApi(`/api/projects/${project_id}/characters/${character_id}`, { method: 'PATCH', body: { assetRoots: { [part_source]: asset_url } } })));
+
 const transport = new StdioServerTransport();
 await s.connect(transport);

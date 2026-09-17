@@ -8,6 +8,7 @@ le rendu, la timeline ou le MCP DOIT lire d'abord :
 3. `docs/knowledge/13_FLIP_INTEGRATION_NOTES.md`
 4. `docs/schemas/*.schema.json`
 5. `docs/examples/characters/*.json`
+6. `docs/MCP_LANGUAGE.md` — glossaire des outils exposés à l'agent
 
 ## Règles non négociables
 

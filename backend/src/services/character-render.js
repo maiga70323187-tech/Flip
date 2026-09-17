@@ -58,7 +58,7 @@ export function characterToSvg(character, options = {}) {
   // Parts visibles pour la vue courante, triées par zIndex.
   const parts = (character.parts ?? [])
     .filter(p => !p.view || p.view === view)
-    .filter(p => !p.variantGroup || matchesVariant(character, p))
+    .filter(p => visiblePart(character, p))
     .sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0));
 
   const inner = [];
@@ -84,11 +84,22 @@ export function characterToSvg(character, options = {}) {
   return `<g id="char-${escXml(character.id)}" transform="translate(${tr.x} ${tr.y}) rotate(${tr.rotation ?? 0}) scale(${tr.scale ?? 1})">${inner.join('')}</g>`;
 }
 
-function matchesVariant(character, part) {
-  // Ex: variantGroup="hand_R", slot hand_R.part = "hand_R_open" => on ne garde
-  // que hand_R_open. Si le slot ne sélectionne pas cette variantGroup, on
-  // garde la part (comportement "toutes visibles" par défaut, sûr).
-  const slot = (character.slots ?? []).find(s => s.id === part.variantGroup || s.bone === part.bone);
-  if (!slot?.part) return true;
+// Phase 2 : les slots portent la sélection de variante.
+// Une part sans variantGroup est toujours visible.
+// Une part avec variantGroup n'est visible que si le slot dont
+// slot.id === variantGroup a slot.part === part.id (ou slot.part === null,
+// auquel cas la première variante du groupe est utilisée, à la charge
+// de la logique appelante).
+function visiblePart(character, part) {
+  if (part.hidden === true) return false;
+  if (!part.variantGroup) return true;
+  const slot = (character.slots ?? []).find(s => s.id === part.variantGroup);
+  if (!slot) return true; // groupe non piloté par un slot → toutes visibles
+  if (slot.visible === false) return false;
+  if (!slot.part) {
+    // Aucune part choisie : on prend la première rencontrée du groupe.
+    const first = (character.parts ?? []).find(p => p.variantGroup === part.variantGroup);
+    return first?.id === part.id;
+  }
   return slot.part === part.id;
 }

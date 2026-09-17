@@ -384,6 +384,25 @@ export class JsonStore {
     return ok;
   }
 
+  async setCharacterSlot(projectId, characterId, slotId, patch) {
+    let out = null;
+    await this.mutate(projectId, p => {
+      const c = (p.characters ?? []).find(x => x.id === characterId);
+      if (!c) throw new FlipError('UNKNOWN_CHARACTER', characterId);
+      const slot = (c.slots ?? []).find(s => s.id === slotId);
+      if (!slot) throw new FlipError('MISSING_SLOT', `slot ${slotId} not on character ${c.id}`, { available: (c.slots ?? []).map(s => s.id) });
+      if (patch.part !== undefined && patch.part !== null) {
+        const exists = (c.parts ?? []).some(pt => pt.id === patch.part);
+        if (!exists) throw new FlipError('MISSING_ASSET', `part ${patch.part} not on character ${c.id}`, { available: (c.parts ?? []).map(pt => pt.id) });
+        slot.part = patch.part;
+      } else if (patch.part === null) slot.part = null;
+      if (patch.visible !== undefined) slot.visible = patch.visible;
+      if (patch.zIndex !== undefined) slot.zIndex = patch.zIndex;
+      out = slot;
+    });
+    return out;
+  }
+
   async setCharacterPartAsset(projectId, characterId, partSource, assetUrl) {
     let out = null;
     await this.mutate(projectId, p => {

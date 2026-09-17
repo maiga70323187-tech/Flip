@@ -64,6 +64,15 @@ Exemple procédural : `node scripts/seed-example.mjs` crée un projet « balle q
 - **ChatGPT (Actions)** : importer `backend/openapi.json` dans un GPT personnalisé. Aucune clé n'est requise pour l'usage local.
 - **Autres clients** : appeler l'API HTTP directement, en suivant l'OpenAPI.
 
+## Manuel du langage MCP
+
+`docs/MCP_LANGUAGE.md` — glossaire des outils exposés à l'agent IA
+(noms, arguments typés), table des codes d'erreur structurés
+(`UNKNOWN_CHARACTER`, `MISSING_SLOT`, `UNSUPPORTED_EXPRESSION`, …), et
+5 scénarios agent complets avec les séquences d'appels et leurs
+résultats. À lire pour comprendre comment un client MCP ou HTTP
+pilote le moteur.
+
 ## Base de connaissances personnages 2D
 
 `docs/knowledge/` — 14 documents qui définissent ce qu'est un personnage

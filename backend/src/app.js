@@ -14,6 +14,7 @@ import {
 import { renderFrameSvg, renderManifest } from './services/render.js';
 import { generateDecor, DECOR_PRESETS } from './services/decor.js';
 import { svgToPng, svgsToMp4 } from './services/rasterize.js';
+import { buildHumanoidRig } from './services/humanoid-rig.js';
 import { FlipError } from './lib/model.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -327,6 +328,19 @@ export function createApp() {
   app.delete('/api/projects/:id/characters/:cid', wrap(async (req, res) => {
     res.status(await store.deleteCharacter(req.params.id, req.params.cid) ? 204 : 404).end();
   }));
+  // Phase 2 : sélection de variante par slot (règle #2)
+  app.patch('/api/projects/:id/characters/:cid/slots/:slotId', wrap(async (req, res) => {
+    const slot = await store.setCharacterSlot(req.params.id, req.params.cid, req.params.slotId, req.body);
+    res.json(slot);
+  }));
+
+  // Phase 2 : générateur de rig humanoïde
+  app.post('/api/projects/:id/characters/humanoid_rig', wrap(async (req, res) => {
+    const rig = buildHumanoidRig(req.body ?? {});
+    const c = await store.addCharacter(req.params.id, rig);
+    res.status(201).json(c);
+  }));
+
   // Upload asset pour une part (attaché via source dans assetRoots)
   app.post('/api/projects/:id/characters/:cid/asset', upload.single('file'), wrap(async (req, res) => {
     const partSource = req.body.part_source ?? req.query.part_source;
