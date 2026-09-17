@@ -7,3 +7,7 @@ backend/data/assets/*
 !backend/data/assets/.gitkeep
 output/exports/*
 !output/exports/.gitkeep
+
+# build artifacts
+frontend/dist/
+*.tsbuildinfo
