@@ -359,6 +359,13 @@ export class JsonStore {
       if (!c) throw new FlipError('UNKNOWN_CHARACTER', `no character with id ${characterId}`);
       // Fusions ciblées (transform, currentView, currentExpression, visible, zIndex, assetRoots)
       if (patch.transform) c.transform = { ...c.transform, ...patch.transform };
+      // Validation sémantique : refuser un currentView/currentExpression non déclaré.
+      if (patch.currentView !== undefined && c.views && !c.views[patch.currentView]) {
+        throw new FlipError('MISSING_VIEW', `view ${patch.currentView} not declared on character ${c.id}`, { available: Object.keys(c.views) });
+      }
+      if (patch.currentExpression !== undefined && c.expressions && !c.expressions[patch.currentExpression]) {
+        throw new FlipError('UNSUPPORTED_EXPRESSION', `expression ${patch.currentExpression} not declared on character ${c.id}`, { available: Object.keys(c.expressions) });
+      }
       for (const k of ['currentView', 'currentExpression', 'visible', 'zIndex', 'name']) {
         if (patch[k] !== undefined) c[k] = patch[k];
       }
