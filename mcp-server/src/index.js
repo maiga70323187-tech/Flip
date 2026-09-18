@@ -223,6 +223,10 @@ s.tool('build_humanoid_rig', 'Créer un personnage humanoïde complet (bones + s
   { project_id: z.string(), name: z.string().optional(), origin_x: z.number().optional(), origin_y: z.number().optional(), style_profile: z.any().optional() },
   async ({ project_id, name, origin_x, origin_y, style_profile }) => asContent(await callApi(`/api/projects/${project_id}/characters/humanoid_rig`, { method: 'POST', body: { name, originX: origin_x, originY: origin_y, styleProfile: style_profile } })));
 
+s.tool('build_procedural_character', 'Créer un humanoïde COMPLET avec des SVG de chaque partie du corps générés localement (aucun modèle externe). L\'agent choisit le style (nom de palette), le moteur produit les paths Bézier de tête/torse/bras/jambes/mains/pieds/cheveux. La règle #10 CLAUDE.md est respectée : ce ne sont pas des primitives brutes mais un dessin flat-cartoon assemblé.',
+  { project_id: z.string(), name: z.string().optional(), origin_x: z.number().optional(), origin_y: z.number().optional(), palette_name: z.string().optional() },
+  async ({ project_id, name, origin_x, origin_y, palette_name }) => asContent(await callApi(`/api/projects/${project_id}/characters/procedural`, { method: 'POST', body: { name, originX: origin_x, originY: origin_y, paletteName: palette_name } })));
+
 s.tool('set_character_variant', 'Sélectionner quelle variante de part est visible pour un slot donné (ex: slot_id="hand_front", part_id="hand_R_fist"). Refuse MISSING_SLOT/MISSING_ASSET si l\'id est inconnu.',
   { project_id: z.string(), character_id: z.string(), slot_id: z.string(), part_id: z.string().nullable() },
   async ({ project_id, character_id, slot_id, part_id }) => asContent(await callApi(`/api/projects/${project_id}/characters/${character_id}/slots/${slot_id}`, { method: 'PATCH', body: { part: part_id } })));

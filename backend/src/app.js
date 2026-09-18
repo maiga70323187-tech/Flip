@@ -15,6 +15,7 @@ import { renderFrameSvg, renderManifest } from './services/render.js';
 import { generateDecor, DECOR_PRESETS } from './services/decor.js';
 import { svgToPng, svgsToMp4 } from './services/rasterize.js';
 import { buildHumanoidRig } from './services/humanoid-rig.js';
+import { buildProceduralCharacter, PALETTES } from './services/procedural-character.js';
 import { FlipError } from './lib/model.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -339,6 +340,14 @@ export function createApp() {
     const rig = buildHumanoidRig(req.body ?? {});
     const c = await store.addCharacter(req.params.id, rig);
     res.status(201).json(c);
+  }));
+
+  // Générateur procédural — rig + SVGs de chaque part codés à la main.
+  app.get('/api/procedural/palettes', wrap(async (req, res) => res.json(Object.keys(PALETTES))));
+  app.post('/api/projects/:id/characters/procedural', wrap(async (req, res) => {
+    const character = buildProceduralCharacter(req.body ?? {});
+    const c = await store.addCharacter(req.params.id, character);
+    res.status(201).json({ id: c.id, name: c.name, parts_generated: Object.keys(c.assetRoots ?? {}).length });
   }));
 
   // Upload asset pour une part (attaché via source dans assetRoots)

@@ -27,6 +27,22 @@ function normalizeBones(characterBones = []) {
   }));
 }
 
+// Rotation MONDE au repos (sans interpolation) — parcours de la chaîne des
+// parents. Sert à calculer le "delta" à appliquer aux parts.
+function computeRestWorldRotations(bones) {
+  const byId = Object.fromEntries(bones.map(b => [b.id, b]));
+  const out = {};
+  const visit = (b) => {
+    if (out[b.id] !== undefined) return out[b.id];
+    const parent = b.parent_id ? byId[b.parent_id] : null;
+    const parentRot = parent ? visit(parent) : 0;
+    out[b.id] = parentRot + (b.rotation || 0);
+    return out[b.id];
+  };
+  for (const b of bones) visit(b);
+  return out;
+}
+
 export function computeCharacterBoneTransforms(character, t_ms = 0) {
   return computeBoneTransforms(normalizeBones(character.bones ?? []), t_ms);
 }
@@ -52,7 +68,9 @@ export function characterToSvg(character, options = {}) {
   const t_ms = options.t_ms ?? 0;
   const showPlaceholders = options.placeholders !== false; // par défaut on montre le debug
   const view = character.currentView ?? character.defaultView ?? 'front';
-  const bt = computeCharacterBoneTransforms(character, t_ms);
+  const bones = normalizeBones(character.bones ?? []);
+  const bt = computeBoneTransforms(bones, t_ms);
+  const restRot = computeRestWorldRotations(bones);
   const tr = character.transform ?? { x: 0, y: 0, rotation: 0, scale: 1 };
 
   // Parts visibles pour la vue courante, triées par zIndex.
@@ -64,7 +82,10 @@ export function characterToSvg(character, options = {}) {
   const inner = [];
   for (const p of parts) {
     const bone = p.bone ? bt[p.bone] : null;
-    const boneTf = bone ? `translate(${bone.x} ${bone.y}) rotate(${bone.rotation}) ` : '';
+    // Ne rotate que par le DELTA depuis le repos (convention Spine/Rive) :
+    // à rest, chaque part reste dans son orientation d'origine (verticale).
+    const deltaRot = bone && restRot[p.bone] !== undefined ? bone.rotation - restRot[p.bone] : 0;
+    const boneTf = bone ? `translate(${bone.x} ${bone.y}) rotate(${deltaRot}) ` : '';
     const src = resolvePartSource(character, p);
     const w = p.width ?? 100;
     const h = p.height ?? 100;
