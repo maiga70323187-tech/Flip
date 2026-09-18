@@ -1,0 +1,3180 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Expressive Studio</title>
+<style>
+:root {
+  --bg: #1d1d1d;
+  --panel: #262626;
+  --panel-2: #2f2f2f;
+  --panel-3: #383838;
+  --border: #3c3c3c;
+  --text: #e9e9e9;
+  --text-dim: #9b9b9b;
+  --accent: #8f52f5;
+  --accent-2: #c93dfc;
+  --accent-text: #fff;
+  --ok: #4ec98a;
+  --warn: #e0a72c;
+  --err: #ff6b6b;
+  --kf: #ffc107;
+  --row: 26px;
+  --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+}
+:root[data-theme="light"] {
+  --bg: #efefef; --panel: #fff; --panel-2: #f6f6f6; --panel-3: #ebebeb;
+  --border: #d5d5d5; --text: #1d1d1d; --text-dim: #6c6c6c; --accent: #6e25f2;
+  --kf: #b8860b;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; }
+body {
+  background: var(--bg); color: var(--text);
+  font: 13px/1.45 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Ubuntu, sans-serif;
+  user-select: none;
+}
+#app {
+  display: grid; height: 100vh;
+  grid-template-areas: "top top top" "tools canvas side" "timeline timeline timeline";
+  grid-template-columns: 50px minmax(0,1fr) 296px;
+  grid-template-rows: 46px minmax(0,1fr) 232px;
+}
+.topbar {
+  grid-area: top; background: var(--panel); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 6px; padding: 0 10px;
+}
+.brand { font-weight: 700; letter-spacing: .3px; margin-right: 6px; white-space: nowrap; }
+.brand span { color: var(--accent-2); }
+.sep { width: 1px; height: 22px; background: var(--border); margin: 0 4px; }
+.spacer { flex: 1; }
+button, select, input {
+  font: inherit; color: var(--text); background: var(--panel-2);
+  border: 1px solid var(--border); border-radius: 4px; padding: 4px 8px;
+}
+button { cursor: pointer; white-space: nowrap; }
+button:hover:not(:disabled) { background: var(--panel-3); border-color: var(--accent); }
+button:disabled { opacity: .4; cursor: not-allowed; }
+button.on { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+button.ghost { background: transparent; border-color: transparent; }
+button.ghost:hover:not(:disabled) { background: var(--panel-2); border-color: var(--border); }
+button.go { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+input[type=text], input[type=number] { width: 100%; }
+input[type=color] { padding: 1px; height: 26px; width: 34px; cursor: pointer; }
+input:focus, select:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+.toolbar {
+  grid-area: tools; background: var(--panel); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 0;
+}
+.tool {
+  width: 36px; height: 36px; display: grid; place-items: center; padding: 0;
+  background: transparent; border-color: transparent; border-radius: 5px;
+}
+.tool svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.tool.on { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+
+.canvas-area { grid-area: canvas; position: relative; overflow: hidden; background: var(--bg); }
+#stage { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+.hud {
+  position: absolute; left: 10px; bottom: 10px; display: flex; gap: 6px; align-items: center;
+  background: rgba(0,0,0,.45); border-radius: 5px; padding: 4px 8px;
+  font-family: var(--mono); font-size: 11px; color: #fff; pointer-events: none;
+}
+.canvas-tools { position: absolute; right: 10px; top: 10px; display: flex; gap: 5px; }
+
+.side {
+  grid-area: side; background: var(--panel); border-left: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.tabs { display: flex; border-bottom: 1px solid var(--border); }
+.tabs button {
+  flex: 1; border: none; border-radius: 0; background: var(--panel-2); padding: 7px 4px;
+  color: var(--text-dim); font-size: 12px; border-bottom: 2px solid transparent;
+}
+.tabs button.on { background: var(--panel); color: var(--text); border-bottom-color: var(--accent); }
+.pane { flex: 1; overflow-y: auto; overflow-x: hidden; }
+.pane[hidden] { display: none; }
+.group { border-bottom: 1px solid var(--border); padding: 9px 10px; }
+.group > h3 {
+  margin: 0 0 8px; font-size: 10.5px; text-transform: uppercase; letter-spacing: .8px;
+  color: var(--text-dim); font-weight: 600;
+}
+.field { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.field > label { flex: 0 0 58px; color: var(--text-dim); font-size: 12px; }
+.field .pair { display: flex; gap: 5px; flex: 1; min-width: 0; }
+.field .pair input { min-width: 0; }
+.kfbtn {
+  flex: 0 0 22px; width: 22px; height: 22px; padding: 0; display: grid; place-items: center;
+  background: transparent; border-color: transparent; border-radius: 3px;
+}
+.kfbtn:hover { background: var(--panel-3); }
+.kfbtn i {
+  display: block; width: 8px; height: 8px; transform: rotate(45deg);
+  border: 1.4px solid var(--text-dim); border-radius: 1px;
+}
+.kfbtn.on i { background: var(--kf); border-color: var(--kf); }
+.hint { color: var(--text-dim); font-size: 11.5px; padding: 14px 10px; text-align: center; }
+
+.layers { padding: 4px 0; }
+.layer {
+  display: flex; align-items: center; gap: 5px; padding: 3px 8px; cursor: default;
+  border-left: 2px solid transparent; font-size: 12.5px;
+}
+.layer:hover { background: var(--panel-2); }
+.layer.sel { background: var(--panel-3); border-left-color: var(--accent); }
+.layer .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.layer .ic { width: 15px; text-align: center; color: var(--text-dim); font-size: 11px; flex: none; }
+.layer button {
+  background: transparent; border: none; padding: 0 2px; color: var(--text-dim);
+  font-size: 11px; line-height: 1; border-radius: 3px;
+}
+.layer button:hover { color: var(--text); background: var(--panel-3); }
+.layer .nm input { width: 100%; padding: 1px 3px; font-size: 12.5px; }
+
+.timeline {
+  grid-area: timeline; background: var(--panel); border-top: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.tl-bar { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-bottom: 1px solid var(--border); }
+.tl-time { font-family: var(--mono); font-size: 12px; color: var(--text-dim); min-width: 132px; }
+.rec.on { background: #d33; border-color: #d33; color: #fff; }
+.tl-body { flex: 1; display: grid; grid-template-columns: 210px minmax(0,1fr); overflow: hidden; }
+.tl-names { border-right: 1px solid var(--border); overflow: hidden auto; background: var(--panel-2); }
+.tl-tracks { position: relative; overflow: auto; }
+.tl-ruler {
+  position: sticky; top: 0; height: 22px; background: var(--panel-2);
+  border-bottom: 1px solid var(--border); z-index: 3;
+}
+.tl-ruler canvas { display: block; height: 22px; }
+.tl-names .head { height: 22px; border-bottom: 1px solid var(--border); background: var(--panel-2); position: sticky; top: 0; z-index: 3; }
+.tl-row { height: var(--row); display: flex; align-items: center; gap: 5px; padding: 0 8px; font-size: 12px; white-space: nowrap; }
+.tl-row.el { font-weight: 600; background: var(--panel-3); }
+.tl-row.el.sel { color: var(--accent-2); }
+.tl-row.prop { color: var(--text-dim); padding-left: 22px; }
+.track { height: var(--row); position: relative; }
+.track.el { background: rgba(255,255,255,.035); }
+.kfd {
+  position: absolute; top: 50%; width: 11px; height: 11px; margin: -5.5px 0 0 -5.5px;
+  background: var(--kf); border: 1px solid #0006; transform: rotate(45deg); cursor: grab; border-radius: 1px;
+}
+.kfd.sel { background: #fff; border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.kfseg { position: absolute; top: 50%; height: 3px; margin-top: -1.5px; background: var(--kf); opacity: .3; }
+#playhead { position: absolute; top: 0; bottom: 0; width: 1px; background: #ff4d4d; z-index: 4; pointer-events: none; }
+#playhead::before {
+  content: ''; position: absolute; top: 0; left: -5px; border: 5px solid transparent;
+  border-top-color: #ff4d4d; border-bottom: none; height: 0;
+}
+.modal-bg {
+  position: fixed; inset: 0; background: #0009; display: grid; place-items: center; z-index: 50;
+}
+.modal {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+  padding: 16px; width: min(430px, 92vw); max-height: 86vh; overflow: auto;
+}
+.modal h2 { margin: 0 0 12px; font-size: 15px; }
+.modal .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
+#toast {
+  position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+  background: var(--panel-3); border: 1px solid var(--border); border-radius: 6px;
+  padding: 8px 14px; z-index: 60; opacity: 0; transition: opacity .25s; pointer-events: none;
+  max-width: 80vw;
+}
+#toast.show { opacity: 1; }
+#toast.err { border-color: var(--err); color: var(--err); }
+#toast.ok { border-color: var(--ok); }
+progress { width: 100%; height: 5px; }
+@media (max-width: 880px) {
+  #app { grid-template-columns: 46px minmax(0,1fr) 240px; grid-template-rows: 46px minmax(0,1fr) 200px; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <div class="brand">Expressive <span>Studio</span></div>
+    <div class="sep"></div>
+    <button id="m-new" class="ghost" title="Nouveau document">Nouveau</button>
+    <button id="m-open" class="ghost" title="Ouvrir un .eaf">Ouvrir</button>
+    <button id="m-save" class="ghost" title="Enregistrer en .eaf (Ctrl+S)">Enregistrer</button>
+    <div class="sep"></div>
+    <button id="m-undo" class="ghost" title="Annuler (Ctrl+Z)">&#8630;</button>
+    <button id="m-redo" class="ghost" title="Rétablir (Ctrl+Y)">&#8631;</button>
+    <div class="sep"></div>
+    <button id="m-group" class="ghost" title="Grouper (Ctrl+G)">Grouper</button>
+    <button id="m-ungroup" class="ghost" title="Dégrouper (Ctrl+Maj+G)">Dégrouper</button>
+    <button id="m-dup" class="ghost" title="Dupliquer (Ctrl+D)">Dupliquer</button>
+    <button id="m-del" class="ghost" title="Supprimer (Suppr)">Supprimer</button>
+    <div class="spacer"></div>
+    <button id="m-demo" class="ghost" title="Charger une animation d'exemple">Exemple</button>
+    <button id="m-theme" class="ghost" title="Thème clair / sombre">&#9681;</button>
+    <button id="m-export" class="go" title="Exporter en MP4 ou PNG">Exporter</button>
+    <input type="file" id="file-input" accept=".eaf" hidden>
+  </div>
+
+  <div class="toolbar" id="toolbar"></div>
+
+  <div class="canvas-area">
+    <canvas id="stage"></canvas>
+    <div class="canvas-tools">
+      <button id="v-fit" class="ghost" title="Ajuster à la fenêtre (Maj+0)">Ajuster</button>
+      <button id="v-100" class="ghost" title="Zoom 100 % (Ctrl+0)">100 %</button>
+      <button id="v-grid" class="ghost" title="Grille et magnétisme">Grille</button>
+    </div>
+    <div class="hud"><span id="hud-zoom">100 %</span><span id="hud-pos">0, 0</span></div>
+  </div>
+
+  <div class="side">
+    <div class="tabs">
+      <button id="tab-props" class="on">Propriétés</button>
+      <button id="tab-layers">Calques</button>
+    </div>
+    <div class="pane" id="pane-props"></div>
+    <div class="pane" id="pane-layers" hidden>
+      <div class="layers" id="layer-list"></div>
+    </div>
+  </div>
+
+  <div class="timeline">
+    <div class="tl-bar">
+      <button id="t-rec" class="rec" title="Mode enregistrement : toute modification pose une clé">&#9679; Enreg.</button>
+      <div class="sep"></div>
+      <button id="t-start" class="ghost" title="Début">&#124;&#9664;</button>
+      <button id="t-play" class="ghost" title="Lire / Pause (Espace)">&#9654;</button>
+      <button id="t-end" class="ghost" title="Fin">&#9654;&#124;</button>
+      <button id="t-loop" class="ghost" title="Lecture en boucle">&#8635;</button>
+      <div class="tl-time" id="t-time">0:00.000 / 0:05.000</div>
+      <div class="sep"></div>
+      <button id="t-addkf" class="ghost" title="Poser une clé sur toutes les propriétés animées">Poser une clé</button>
+      <button id="t-delkf" class="ghost" title="Supprimer les clés sélectionnées (Suppr)">Supprimer clé</button>
+      <label style="color:var(--text-dim);font-size:12px">Accélération</label>
+      <select id="t-easing" style="width:130px">
+        <option value="linear">Linéaire</option>
+        <option value="ease">Douce</option>
+        <option value="ease-in">Entrée douce</option>
+        <option value="ease-out">Sortie douce</option>
+        <option value="ease-in-out">Entrée et sortie</option>
+      </select>
+      <div class="spacer"></div>
+      <label style="color:var(--text-dim);font-size:12px">Zoom</label>
+      <input type="range" id="t-zoom" min="20" max="600" value="100" style="width:110px;padding:0">
+    </div>
+    <div class="tl-body">
+      <div class="tl-names" id="tl-names"><div class="head"></div></div>
+      <div class="tl-tracks" id="tl-tracks">
+        <div class="tl-ruler"><canvas id="tl-ruler-canvas" height="22"></canvas></div>
+        <div id="tl-rows" style="position:relative"></div>
+        <div id="playhead"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+<script>
+/*! mp4-muxer 5.2.1 | MIT | Vanilagy | https://github.com/Vanilagy/mp4-muxer */
+/**
+ * Minified by jsDelivr using Terser v5.39.0.
+ * Original file: /npm/mp4-muxer@5.2.1/build/mp4-muxer.js
+ *
+ * Do NOT use SRI with dynamically generated files! More information: https://www.jsdelivr.com/using-sri-with-dynamic-files
+ */
+"use strict";var Mp4Muxer=(()=>{var e=Object.defineProperty,t=Object.getOwnPropertyDescriptor,i=Object.getOwnPropertyNames,s=Object.prototype.hasOwnProperty,a=(e,t,i)=>{if(!t.has(e))throw TypeError("Cannot "+i)},r=(e,t,i)=>(a(e,t,"read from private field"),i?i.call(e):t.get(e)),n=(e,t,i)=>{if(t.has(e))throw TypeError("Cannot add the same private member more than once");t instanceof WeakSet?t.add(e):t.set(e,i)},o=(e,t,i,s)=>(a(e,t,"write to private field"),s?s.call(e,i):t.set(e,i),i),h=(e,t,i)=>(a(e,t,"access private method"),i),l={};((t,i)=>{for(var s in i)e(t,s,{get:i[s],enumerable:!0})})(l,{ArrayBufferTarget:()=>Me,FileSystemWritableFileStreamTarget:()=>Oe,Muxer:()=>Rt,StreamTarget:()=>We});var d,f,u,m,p,c,w,g,b=new Uint8Array(8),y=new DataView(b.buffer),k=e=>[(e%256+256)%256],T=e=>(y.setUint16(0,e,!1),[b[0],b[1]]),C=e=>(y.setUint32(0,e,!1),[b[1],b[2],b[3]]),v=e=>(y.setUint32(0,e,!1),[b[0],b[1],b[2],b[3]]),S=e=>(y.setUint32(0,Math.floor(e/2**32),!1),y.setUint32(4,e,!1),[b[0],b[1],b[2],b[3],b[4],b[5],b[6],b[7]]),x=e=>(y.setInt16(0,256*e,!1),[b[0],b[1]]),z=e=>(y.setInt32(0,65536*e,!1),[b[0],b[1],b[2],b[3]]),E=e=>(y.setInt32(0,2**30*e,!1),[b[0],b[1],b[2],b[3]]),A=(e,t=!1)=>{let i=Array(e.length).fill(null).map(((t,i)=>e.charCodeAt(i)));return t&&i.push(0),i},M=e=>e&&e[e.length-1],W=e=>{let t;for(let i of e)(!t||i.presentationTimestamp>t.presentationTimestamp)&&(t=i);return t},O=(e,t,i=!0)=>{let s=e*t;return i?Math.round(s):s},B=e=>{let t=e*(Math.PI/180),i=Math.cos(t),s=Math.sin(t);return[i,s,0,-s,i,0,0,0,1]},U=B(0),D=e=>[z(e[0]),z(e[1]),E(e[2]),z(e[3]),z(e[4]),E(e[5]),z(e[6]),z(e[7]),E(e[8])],j=e=>e?"object"!=typeof e?e:Array.isArray(e)?e.map(j):Object.fromEntries(Object.entries(e).map((([e,t])=>[e,j(t)]))):e,R=e=>e>=0&&e<2**32,I=(e,t,i)=>({type:e,contents:t&&new Uint8Array(t.flat(10)),children:i}),N=(e,t,i,s,a)=>I(e,[k(t),C(i),s??[]],a),V=e=>({type:"mdat",largeSize:e}),F=(e,t,i=!1)=>I("moov",null,[L(t,e),...e.map((e=>$(e,t))),i?me(e):null]),L=(e,t)=>{let i=O(Math.max(0,...t.filter((e=>e.samples.length>0)).map((e=>{const t=W(e.samples);return t.presentationTimestamp+t.duration}))),Bt),s=Math.max(...t.map((e=>e.id)))+1,a=!R(e)||!R(i),r=a?S:v;return N("mvhd",+a,0,[r(e),r(e),v(Bt),r(i),z(1),x(1),Array(10).fill(0),D(U),Array(24).fill(0),v(s)])},$=(e,t)=>I("trak",null,[P(e,t),H(e,t)]),P=(e,t)=>{let i,s=W(e.samples),a=O(s?s.presentationTimestamp+s.duration:0,Bt),r=!R(t)||!R(a),n=r?S:v;return i="video"===e.info.type?"number"==typeof e.info.rotation?B(e.info.rotation):e.info.rotation:U,N("tkhd",+r,3,[n(t),n(t),v(e.id),v(0),n(a),Array(8).fill(0),T(0),T(0),x("audio"===e.info.type?1:0),T(0),D(i),z("video"===e.info.type?e.info.width:0),z("video"===e.info.type?e.info.height:0)])},H=(e,t)=>I("mdia",null,[_(e,t),q("video"===e.info.type?"vide":"soun"),G(e)]),_=(e,t)=>{let i=W(e.samples),s=O(i?i.presentationTimestamp+i.duration:0,e.timescale),a=!R(t)||!R(s),r=a?S:v;return N("mdhd",+a,0,[r(t),r(t),v(e.timescale),r(s),T(21956),T(0)])},q=e=>N("hdlr",0,0,[A("mhlr"),A(e),v(0),v(0),v(0),A("mp4-muxer-hdlr",!0)]),G=e=>I("minf",null,["video"===e.info.type?J():K(),Q(),Z(e)]),J=()=>N("vmhd",0,1,[T(0),T(0),T(0),T(0)]),K=()=>N("smhd",0,0,[T(0),T(0)]),Q=()=>I("dinf",null,[X()]),X=()=>N("dref",0,0,[v(1)],[Y()]),Y=()=>N("url ",0,1),Z=e=>{const t=e.compositionTimeOffsetTable.length>1||e.compositionTimeOffsetTable.some((e=>0!==e.sampleCompositionTimeOffset));return I("stbl",null,[ee(e),oe(e),he(e),le(e),de(e),fe(e),t?ue(e):null])},ee=e=>N("stsd",0,0,[v(1)],["video"===e.info.type?te(Se[e.info.codec],e):ne(ze[e.info.codec],e)]),te=(e,t)=>{return I(e,[Array(6).fill(0),T(1),T(0),T(0),Array(12).fill(0),T(t.info.width),T(t.info.height),v(4718592),v(4718592),v(0),T(1),Array(32).fill(0),T(24),(i=65535,y.setInt16(0,i,!1),[b[0],b[1]])],[xe[t.info.codec](t),t.info.decoderConfig.colorSpace?re(t):null]);var i},ie={bt709:1,bt470bg:5,smpte170m:6},se={bt709:1,smpte170m:6,"iec61966-2-1":13},ae={rgb:0,bt709:1,bt470bg:5,smpte170m:6},re=e=>I("colr",[A("nclx"),T(ie[e.info.decoderConfig.colorSpace.primaries]),T(se[e.info.decoderConfig.colorSpace.transfer]),T(ae[e.info.decoderConfig.colorSpace.matrix]),k((e.info.decoderConfig.colorSpace.fullRange?1:0)<<7)]),ne=(e,t)=>I(e,[Array(6).fill(0),T(1),T(0),T(0),v(0),T(t.info.numberOfChannels),T(16),T(0),T(0),z(t.info.sampleRate)],[Ee[t.info.codec](t)]),oe=e=>N("stts",0,0,[v(e.timeToSampleTable.length),e.timeToSampleTable.map((e=>[v(e.sampleCount),v(e.sampleDelta)]))]),he=e=>{if(e.samples.every((e=>"key"===e.type)))return null;let t=[...e.samples.entries()].filter((([,e])=>"key"===e.type));return N("stss",0,0,[v(t.length),t.map((([e])=>v(e+1)))])},le=e=>N("stsc",0,0,[v(e.compactlyCodedChunkTable.length),e.compactlyCodedChunkTable.map((e=>[v(e.firstChunk),v(e.samplesPerChunk),v(1)]))]),de=e=>N("stsz",0,0,[v(0),v(e.samples.length),e.samples.map((e=>v(e.size)))]),fe=e=>e.finalizedChunks.length>0&&M(e.finalizedChunks).offset>=2**32?N("co64",0,0,[v(e.finalizedChunks.length),e.finalizedChunks.map((e=>S(e.offset)))]):N("stco",0,0,[v(e.finalizedChunks.length),e.finalizedChunks.map((e=>v(e.offset)))]),ue=e=>N("ctts",0,0,[v(e.compositionTimeOffsetTable.length),e.compositionTimeOffsetTable.map((e=>[v(e.sampleCount),v(e.sampleCompositionTimeOffset)]))]),me=e=>I("mvex",null,e.map(pe)),pe=e=>N("trex",0,0,[v(e.id),v(1),v(0),v(0),v(0)]),ce=(e,t)=>I("moof",null,[we(e),...t.map(be)]),we=e=>N("mfhd",0,0,[v(e)]),ge=e=>{let t=0,i=0,s="delta"===e.type;return i|=+s,t|=s?1:2,t<<24|i<<16},be=e=>I("traf",null,[ye(e),ke(e),Te(e)]),ye=e=>{let t=0;t|=8,t|=16,t|=32,t|=131072;let i=e.currentChunk.samples[1]??e.currentChunk.samples[0],s={duration:i.timescaleUnitsToNextSample,size:i.size,flags:ge(i)};return N("tfhd",0,131128,[v(e.id),v(s.duration),v(s.size),v(s.flags)])},ke=e=>N("tfdt",1,0,[S(O(e.currentChunk.startTimestamp,e.timescale))]),Te=e=>{let t=e.currentChunk.samples.map((e=>e.timescaleUnitsToNextSample)),i=e.currentChunk.samples.map((e=>e.size)),s=e.currentChunk.samples.map(ge),a=e.currentChunk.samples.map((t=>O(t.presentationTimestamp-t.decodeTimestamp,e.timescale))),r=new Set(t),n=new Set(i),o=new Set(s),h=new Set(a),l=2===o.size&&s[0]!==s[1],d=r.size>1,f=n.size>1,u=!l&&o.size>1,m=h.size>1||[...h].some((e=>0!==e)),p=0;return p|=1,p|=4*+l,p|=256*+d,p|=512*+f,p|=1024*+u,p|=2048*+m,N("trun",1,p,[v(e.currentChunk.samples.length),v(e.currentChunk.offset-e.currentChunk.moofOffset||0),l?v(s[0]):[],e.currentChunk.samples.map(((e,r)=>{return[d?v(t[r]):[],f?v(i[r]):[],u?v(s[r]):[],m?(n=a[r],y.setInt32(0,n,!1),[b[0],b[1],b[2],b[3]]):[]];var n}))])},Ce=(e,t)=>N("tfra",1,0,[v(e.id),v(63),v(e.finalizedChunks.length),e.finalizedChunks.map((i=>[S(O(i.startTimestamp,e.timescale)),S(i.moofOffset),v(t+1),v(1),v(1)]))]),ve=()=>N("mfro",0,0,[v(0)]),Se={avc:"avc1",hevc:"hvc1",vp9:"vp09",av1:"av01"},xe={avc:e=>e.info.decoderConfig&&I("avcC",[...new Uint8Array(e.info.decoderConfig.description)]),hevc:e=>e.info.decoderConfig&&I("hvcC",[...new Uint8Array(e.info.decoderConfig.description)]),vp9:e=>{if(!e.info.decoderConfig)return null;let t=e.info.decoderConfig;if(!t.colorSpace)throw new Error("'colorSpace' is required in the decoder config for VP9.");let i=t.codec.split("."),s=Number(i[1]),a=Number(i[2]),r=0+(Number(i[3])<<4)+Number(t.colorSpace.fullRange);return N("vpcC",1,0,[k(s),k(a),k(r),k(2),k(2),k(2),T(0)])},av1:()=>I("av1C",[129,0,0,0])},ze={aac:"mp4a",opus:"Opus"},Ee={aac:e=>{let t=new Uint8Array(e.info.decoderConfig.description);return N("esds",0,0,[v(58753152),k(32+t.byteLength),T(1),k(0),v(75530368),k(18+t.byteLength),k(64),k(21),C(0),v(130071),v(130071),v(92307584),k(t.byteLength),...t,v(109084800),k(1),k(2)])},opus:e=>{let t=3840,i=0;const s=e.info.decoderConfig?.description;if(s){if(s.byteLength<18)throw new TypeError("Invalid decoder description provided for Opus; must be at least 18 bytes long.");const e=ArrayBuffer.isView(s)?new DataView(s.buffer,s.byteOffset,s.byteLength):new DataView(s);t=e.getUint16(10,!0),i=e.getInt16(14,!0)}return I("dOps",[k(0),k(e.info.numberOfChannels),T(t),v(e.info.sampleRate),x(i),k(0)])}},Ae=(Symbol("isTarget"),class{}),Me=class extends Ae{constructor(){super(...arguments),this.buffer=null}},We=class extends Ae{constructor(e){if(super(),this.options=e,"object"!=typeof e)throw new TypeError("StreamTarget requires an options object to be passed to its constructor.");if(e.onData){if("function"!=typeof e.onData)throw new TypeError("options.onData, when provided, must be a function.");if(e.onData.length<2)throw new TypeError("options.onData, when provided, must be a function that takes in at least two arguments (data and position). Ignoring the position argument, which specifies the byte offset at which the data is to be written, can lead to broken outputs.")}if(void 0!==e.chunked&&"boolean"!=typeof e.chunked)throw new TypeError("options.chunked, when provided, must be a boolean.");if(void 0!==e.chunkSize&&(!Number.isInteger(e.chunkSize)||e.chunkSize<1024))throw new TypeError("options.chunkSize, when provided, must be an integer and not smaller than 1024.")}},Oe=class extends Ae{constructor(e,t){if(super(),this.stream=e,this.options=t,!(e instanceof FileSystemWritableFileStream))throw new TypeError("FileSystemWritableFileStreamTarget requires a FileSystemWritableFileStream instance.");if(void 0!==t&&"object"!=typeof t)throw new TypeError("FileSystemWritableFileStreamTarget's options, when provided, must be an object.");if(t&&void 0!==t.chunkSize&&(!Number.isInteger(t.chunkSize)||t.chunkSize<=0))throw new TypeError("options.chunkSize, when provided, must be a positive integer")}},Be=class{constructor(){this.pos=0,n(this,d,new Uint8Array(8)),n(this,f,new DataView(r(this,d).buffer)),this.offsets=new WeakMap}seek(e){this.pos=e}writeU32(e){r(this,f).setUint32(0,e,!1),this.write(r(this,d).subarray(0,4))}writeU64(e){r(this,f).setUint32(0,Math.floor(e/2**32),!1),r(this,f).setUint32(4,e,!1),this.write(r(this,d).subarray(0,8))}writeAscii(e){for(let t=0;t<e.length;t++)r(this,f).setUint8(t%8,e.charCodeAt(t)),t%8==7&&this.write(r(this,d));e.length%8!=0&&this.write(r(this,d).subarray(0,e.length%8))}writeBox(e){if(this.offsets.set(e,this.pos),e.contents&&!e.children)this.writeBoxHeader(e,e.size??e.contents.byteLength+8),this.write(e.contents);else{let t=this.pos;if(this.writeBoxHeader(e,0),e.contents&&this.write(e.contents),e.children)for(let t of e.children)t&&this.writeBox(t);let i=this.pos,s=e.size??i-t;this.seek(t),this.writeBoxHeader(e,s),this.seek(i)}}writeBoxHeader(e,t){this.writeU32(e.largeSize?1:t),this.writeAscii(e.type),e.largeSize&&this.writeU64(t)}measureBoxHeader(e){return 8+(e.largeSize?8:0)}patchBox(e){let t=this.pos;this.seek(this.offsets.get(e)),this.writeBox(e),this.seek(t)}measureBox(e){if(e.contents&&!e.children){return this.measureBoxHeader(e)+e.contents.byteLength}{let t=this.measureBoxHeader(e);if(e.contents&&(t+=e.contents.byteLength),e.children)for(let i of e.children)i&&(t+=this.measureBox(i));return t}}};d=new WeakMap,f=new WeakMap;var Ue=class extends Be{constructor(e){super(),n(this,w),n(this,u,void 0),n(this,m,new ArrayBuffer(65536)),n(this,p,new Uint8Array(r(this,m))),n(this,c,0),o(this,u,e)}write(e){h(this,w,g).call(this,this.pos+e.byteLength),r(this,p).set(e,this.pos),this.pos+=e.byteLength,o(this,c,Math.max(r(this,c),this.pos))}finalize(){h(this,w,g).call(this,this.pos),r(this,u).buffer=r(this,m).slice(0,Math.max(r(this,c),this.pos))}};u=new WeakMap,m=new WeakMap,p=new WeakMap,c=new WeakMap,w=new WeakSet,g=function(e){let t=r(this,m).byteLength;for(;t<e;)t*=2;if(t===r(this,m).byteLength)return;let i=new ArrayBuffer(t),s=new Uint8Array(i);s.set(r(this,p),0),o(this,m,i),o(this,p,s)};var De,je,Re,Ie,Ne,Ve,Fe,Le,$e,Pe,He,_e,qe,Ge=class extends Be{constructor(e){super(),n(this,Ve),n(this,Le),n(this,Pe),n(this,_e),n(this,De,void 0),n(this,je,[]),n(this,Re,void 0),n(this,Ie,void 0),n(this,Ne,[]),o(this,De,e),o(this,Re,e.options?.chunked??!1),o(this,Ie,e.options?.chunkSize??16777216)}write(e){r(this,je).push({data:e.slice(),start:this.pos}),this.pos+=e.byteLength}flush(){if(0===r(this,je).length)return;let e=[],t=[...r(this,je)].sort(((e,t)=>e.start-t.start));e.push({start:t[0].start,size:t[0].data.byteLength});for(let i=1;i<t.length;i++){let s=e[e.length-1],a=t[i];a.start<=s.start+s.size?s.size=Math.max(s.size,a.start+a.data.byteLength-s.start):e.push({start:a.start,size:a.data.byteLength})}for(let t of e){t.data=new Uint8Array(t.size);for(let e of r(this,je))t.start<=e.start&&e.start<t.start+t.size&&t.data.set(e.data,e.start-t.start);r(this,Re)?(h(this,Ve,Fe).call(this,t.data,t.start),h(this,_e,qe).call(this)):r(this,De).options.onData?.(t.data,t.start)}r(this,je).length=0}finalize(){r(this,Re)&&h(this,_e,qe).call(this,!0)}};De=new WeakMap,je=new WeakMap,Re=new WeakMap,Ie=new WeakMap,Ne=new WeakMap,Ve=new WeakSet,Fe=function(e,t){let i=r(this,Ne).findIndex((e=>e.start<=t&&t<e.start+r(this,Ie)));-1===i&&(i=h(this,Pe,He).call(this,t));let s=r(this,Ne)[i],a=t-s.start,n=e.subarray(0,Math.min(r(this,Ie)-a,e.byteLength));s.data.set(n,a);let o={start:a,end:a+n.byteLength};if(h(this,Le,$e).call(this,s,o),0===s.written[0].start&&s.written[0].end===r(this,Ie)&&(s.shouldFlush=!0),r(this,Ne).length>2){for(let e=0;e<r(this,Ne).length-1;e++)r(this,Ne)[e].shouldFlush=!0;h(this,_e,qe).call(this)}n.byteLength<e.byteLength&&h(this,Ve,Fe).call(this,e.subarray(n.byteLength),t+n.byteLength)},Le=new WeakSet,$e=function(e,t){let i=0,s=e.written.length-1,a=-1;for(;i<=s;){let r=Math.floor(i+(s-i+1)/2);e.written[r].start<=t.start?(i=r+1,a=r):s=r-1}for(e.written.splice(a+1,0,t),(-1===a||e.written[a].end<t.start)&&a++;a<e.written.length-1&&e.written[a].end>=e.written[a+1].start;)e.written[a].end=Math.max(e.written[a].end,e.written[a+1].end),e.written.splice(a+1,1)},Pe=new WeakSet,He=function(e){let t={start:Math.floor(e/r(this,Ie))*r(this,Ie),data:new Uint8Array(r(this,Ie)),written:[],shouldFlush:!1};return r(this,Ne).push(t),r(this,Ne).sort(((e,t)=>e.start-t.start)),r(this,Ne).indexOf(t)},_e=new WeakSet,qe=function(e=!1){for(let t=0;t<r(this,Ne).length;t++){let i=r(this,Ne)[t];if(i.shouldFlush||e){for(let e of i.written)r(this,De).options.onData?.(i.data.subarray(e.start,e.end),i.start+e.start);r(this,Ne).splice(t--,1)}}};var Je,Ke,Qe,Xe,Ye,Ze,et,tt,it,st,at,rt,nt,ot,ht,lt,dt,ft,ut,mt,pt,ct,wt,gt,bt,yt,kt,Tt,Ct,vt,St,xt,zt,Et,At,Mt,Wt,Ot=class extends Ge{constructor(e){super(new We({onData:(t,i)=>e.stream.write({type:"write",data:t,position:i}),chunked:!0,chunkSize:e.options?.chunkSize}))}},Bt=1e3,Ut=["avc","hevc","vp9","av1"],Dt=["aac","opus"],jt=["strict","offset","cross-track-offset"],Rt=class{constructor(e){if(n(this,nt),n(this,ht),n(this,dt),n(this,ut),n(this,pt),n(this,wt),n(this,bt),n(this,kt),n(this,Ct),n(this,St),n(this,zt),n(this,At),n(this,Je,void 0),n(this,Ke,void 0),n(this,Qe,void 0),n(this,Xe,void 0),n(this,Ye,null),n(this,Ze,null),n(this,et,Math.floor(Date.now()/1e3)+2082844800),n(this,tt,[]),n(this,it,1),n(this,st,[]),n(this,at,[]),n(this,rt,!1),h(this,nt,ot).call(this,e),e.video=j(e.video),e.audio=j(e.audio),e.fastStart=j(e.fastStart),this.target=e.target,o(this,Je,{firstTimestampBehavior:"strict",...e}),e.target instanceof Me)o(this,Ke,new Ue(e.target));else if(e.target instanceof We)o(this,Ke,new Ge(e.target));else{if(!(e.target instanceof Oe))throw new Error(`Invalid target: ${e.target}`);o(this,Ke,new Ot(e.target))}h(this,ut,mt).call(this),h(this,ht,lt).call(this)}addVideoChunk(e,t,i,s){if(!(e instanceof EncodedVideoChunk))throw new TypeError("addVideoChunk's first argument (sample) must be of type EncodedVideoChunk.");if(t&&"object"!=typeof t)throw new TypeError("addVideoChunk's second argument (meta), when provided, must be an object.");if(void 0!==i&&(!Number.isFinite(i)||i<0))throw new TypeError("addVideoChunk's third argument (timestamp), when provided, must be a non-negative real number.");if(void 0!==s&&!Number.isFinite(s))throw new TypeError("addVideoChunk's fourth argument (compositionTimeOffset), when provided, must be a real number.");let a=new Uint8Array(e.byteLength);e.copyTo(a),this.addVideoChunkRaw(a,e.type,i??e.timestamp,e.duration,t,s)}addVideoChunkRaw(e,t,i,s,a,n){if(!(e instanceof Uint8Array))throw new TypeError("addVideoChunkRaw's first argument (data) must be an instance of Uint8Array.");if("key"!==t&&"delta"!==t)throw new TypeError("addVideoChunkRaw's second argument (type) must be either 'key' or 'delta'.");if(!Number.isFinite(i)||i<0)throw new TypeError("addVideoChunkRaw's third argument (timestamp) must be a non-negative real number.");if(!Number.isFinite(s)||s<0)throw new TypeError("addVideoChunkRaw's fourth argument (duration) must be a non-negative real number.");if(a&&"object"!=typeof a)throw new TypeError("addVideoChunkRaw's fifth argument (meta), when provided, must be an object.");if(void 0!==n&&!Number.isFinite(n))throw new TypeError("addVideoChunkRaw's sixth argument (compositionTimeOffset), when provided, must be a real number.");if(h(this,At,Mt).call(this),!r(this,Je).video)throw new Error("No video track declared.");if("object"==typeof r(this,Je).fastStart&&r(this,Ye).samples.length===r(this,Je).fastStart.expectedVideoChunks)throw new Error(`Cannot add more video chunks than specified in 'fastStart' (${r(this,Je).fastStart.expectedVideoChunks}).`);let o=h(this,wt,gt).call(this,r(this,Ye),e,t,i,s,a,n);if("fragmented"===r(this,Je).fastStart&&r(this,Ze)){for(;r(this,at).length>0&&r(this,at)[0].decodeTimestamp<=o.decodeTimestamp;){let e=r(this,at).shift();h(this,bt,yt).call(this,r(this,Ze),e)}o.decodeTimestamp<=r(this,Ze).lastDecodeTimestamp?h(this,bt,yt).call(this,r(this,Ye),o):r(this,st).push(o)}else h(this,bt,yt).call(this,r(this,Ye),o)}addAudioChunk(e,t,i){if(!(e instanceof EncodedAudioChunk))throw new TypeError("addAudioChunk's first argument (sample) must be of type EncodedAudioChunk.");if(t&&"object"!=typeof t)throw new TypeError("addAudioChunk's second argument (meta), when provided, must be an object.");if(void 0!==i&&(!Number.isFinite(i)||i<0))throw new TypeError("addAudioChunk's third argument (timestamp), when provided, must be a non-negative real number.");let s=new Uint8Array(e.byteLength);e.copyTo(s),this.addAudioChunkRaw(s,e.type,i??e.timestamp,e.duration,t)}addAudioChunkRaw(e,t,i,s,a){if(!(e instanceof Uint8Array))throw new TypeError("addAudioChunkRaw's first argument (data) must be an instance of Uint8Array.");if("key"!==t&&"delta"!==t)throw new TypeError("addAudioChunkRaw's second argument (type) must be either 'key' or 'delta'.");if(!Number.isFinite(i)||i<0)throw new TypeError("addAudioChunkRaw's third argument (timestamp) must be a non-negative real number.");if(!Number.isFinite(s)||s<0)throw new TypeError("addAudioChunkRaw's fourth argument (duration) must be a non-negative real number.");if(a&&"object"!=typeof a)throw new TypeError("addAudioChunkRaw's fifth argument (meta), when provided, must be an object.");if(h(this,At,Mt).call(this),!r(this,Je).audio)throw new Error("No audio track declared.");if("object"==typeof r(this,Je).fastStart&&r(this,Ze).samples.length===r(this,Je).fastStart.expectedAudioChunks)throw new Error(`Cannot add more audio chunks than specified in 'fastStart' (${r(this,Je).fastStart.expectedAudioChunks}).`);let n=h(this,wt,gt).call(this,r(this,Ze),e,t,i,s,a);if("fragmented"===r(this,Je).fastStart&&r(this,Ye)){for(;r(this,st).length>0&&r(this,st)[0].decodeTimestamp<=n.decodeTimestamp;){let e=r(this,st).shift();h(this,bt,yt).call(this,r(this,Ye),e)}n.decodeTimestamp<=r(this,Ye).lastDecodeTimestamp?h(this,bt,yt).call(this,r(this,Ze),n):r(this,at).push(n)}else h(this,bt,yt).call(this,r(this,Ze),n)}finalize(){if(r(this,rt))throw new Error("Cannot finalize a muxer more than once.");if("fragmented"===r(this,Je).fastStart){for(let e of r(this,st))h(this,bt,yt).call(this,r(this,Ye),e);for(let e of r(this,at))h(this,bt,yt).call(this,r(this,Ze),e);h(this,St,xt).call(this,!1)}else r(this,Ye)&&h(this,Ct,vt).call(this,r(this,Ye)),r(this,Ze)&&h(this,Ct,vt).call(this,r(this,Ze));let e=[r(this,Ye),r(this,Ze)].filter(Boolean);if("in-memory"===r(this,Je).fastStart){let t;for(let i=0;i<2;i++){let i=F(e,r(this,et)),s=r(this,Ke).measureBox(i);t=r(this,Ke).measureBox(r(this,Xe));let a=r(this,Ke).pos+s+t;for(let e of r(this,tt)){e.offset=a;for(let{data:i}of e.samples)a+=i.byteLength,t+=i.byteLength}if(a<2**32)break;t>=2**32&&(r(this,Xe).largeSize=!0)}let i=F(e,r(this,et));r(this,Ke).writeBox(i),r(this,Xe).size=t,r(this,Ke).writeBox(r(this,Xe));for(let e of r(this,tt))for(let t of e.samples)r(this,Ke).write(t.data),t.data=null}else if("fragmented"===r(this,Je).fastStart){let t=r(this,Ke).pos,i=(e=>I("mfra",null,[...e.map(Ce),ve()]))(e);r(this,Ke).writeBox(i);let s=r(this,Ke).pos-t;r(this,Ke).seek(r(this,Ke).pos-4),r(this,Ke).writeU32(s)}else{let t=r(this,Ke).offsets.get(r(this,Xe)),i=r(this,Ke).pos-t;r(this,Xe).size=i,r(this,Xe).largeSize=i>=2**32,r(this,Ke).patchBox(r(this,Xe));let s=F(e,r(this,et));if("object"==typeof r(this,Je).fastStart){r(this,Ke).seek(r(this,Qe)),r(this,Ke).writeBox(s);let e=t-r(this,Ke).pos;r(this,Ke).writeBox({type:"free",size:e})}else r(this,Ke).writeBox(s)}h(this,zt,Et).call(this),r(this,Ke).finalize(),o(this,rt,!0)}};return Je=new WeakMap,Ke=new WeakMap,Qe=new WeakMap,Xe=new WeakMap,Ye=new WeakMap,Ze=new WeakMap,et=new WeakMap,tt=new WeakMap,it=new WeakMap,st=new WeakMap,at=new WeakMap,rt=new WeakMap,nt=new WeakSet,ot=function(e){if("object"!=typeof e)throw new TypeError("The muxer requires an options object to be passed to its constructor.");if(!(e.target instanceof Ae))throw new TypeError("The target must be provided and an instance of Target.");if(e.video){if(!Ut.includes(e.video.codec))throw new TypeError(`Unsupported video codec: ${e.video.codec}`);if(!Number.isInteger(e.video.width)||e.video.width<=0)throw new TypeError(`Invalid video width: ${e.video.width}. Must be a positive integer.`);if(!Number.isInteger(e.video.height)||e.video.height<=0)throw new TypeError(`Invalid video height: ${e.video.height}. Must be a positive integer.`);const t=e.video.rotation;if("number"==typeof t&&![0,90,180,270].includes(t))throw new TypeError(`Invalid video rotation: ${t}. Has to be 0, 90, 180 or 270.`);if(Array.isArray(t)&&(9!==t.length||t.some((e=>"number"!=typeof e))))throw new TypeError(`Invalid video transformation matrix: ${t.join()}`);if(void 0!==e.video.frameRate&&(!Number.isInteger(e.video.frameRate)||e.video.frameRate<=0))throw new TypeError(`Invalid video frame rate: ${e.video.frameRate}. Must be a positive integer.`)}if(e.audio){if(!Dt.includes(e.audio.codec))throw new TypeError(`Unsupported audio codec: ${e.audio.codec}`);if(!Number.isInteger(e.audio.numberOfChannels)||e.audio.numberOfChannels<=0)throw new TypeError(`Invalid number of audio channels: ${e.audio.numberOfChannels}. Must be a positive integer.`);if(!Number.isInteger(e.audio.sampleRate)||e.audio.sampleRate<=0)throw new TypeError(`Invalid audio sample rate: ${e.audio.sampleRate}. Must be a positive integer.`)}if(e.firstTimestampBehavior&&!jt.includes(e.firstTimestampBehavior))throw new TypeError(`Invalid first timestamp behavior: ${e.firstTimestampBehavior}`);if("object"==typeof e.fastStart){if(e.video){if(void 0===e.fastStart.expectedVideoChunks)throw new TypeError("'fastStart' is an object but is missing property 'expectedVideoChunks'.");if(!Number.isInteger(e.fastStart.expectedVideoChunks)||e.fastStart.expectedVideoChunks<0)throw new TypeError("'expectedVideoChunks' must be a non-negative integer.")}if(e.audio){if(void 0===e.fastStart.expectedAudioChunks)throw new TypeError("'fastStart' is an object but is missing property 'expectedAudioChunks'.");if(!Number.isInteger(e.fastStart.expectedAudioChunks)||e.fastStart.expectedAudioChunks<0)throw new TypeError("'expectedAudioChunks' must be a non-negative integer.")}}else if(![!1,"in-memory","fragmented"].includes(e.fastStart))throw new TypeError("'fastStart' option must be false, 'in-memory', 'fragmented' or an object.");if(void 0!==e.minFragmentDuration&&(!Number.isFinite(e.minFragmentDuration)||e.minFragmentDuration<0))throw new TypeError("'minFragmentDuration' must be a non-negative number.")},ht=new WeakSet,lt=function(){var e;if(r(this,Ke).writeBox((e={holdsAvc:"avc"===r(this,Je).video?.codec,fragmented:"fragmented"===r(this,Je).fastStart}).fragmented?I("ftyp",[A("iso5"),v(512),A("iso5"),A("iso6"),A("mp41")]):I("ftyp",[A("isom"),v(512),A("isom"),e.holdsAvc?A("avc1"):[],A("mp41")])),o(this,Qe,r(this,Ke).pos),"in-memory"===r(this,Je).fastStart)o(this,Xe,V(!1));else if("fragmented"===r(this,Je).fastStart);else{if("object"==typeof r(this,Je).fastStart){let e=h(this,dt,ft).call(this);r(this,Ke).seek(r(this,Ke).pos+e)}o(this,Xe,V(!0)),r(this,Ke).writeBox(r(this,Xe))}h(this,zt,Et).call(this)},dt=new WeakSet,ft=function(){if("object"!=typeof r(this,Je).fastStart)return;let e=0,t=[r(this,Je).fastStart.expectedVideoChunks,r(this,Je).fastStart.expectedAudioChunks];for(let i of t)i&&(e+=8*Math.ceil(2/3*i),e+=4*i,e+=12*Math.ceil(2/3*i),e+=4*i,e+=8*i);return e+=4096,e},ut=new WeakSet,mt=function(){if(r(this,Je).video&&o(this,Ye,{id:1,info:{type:"video",codec:r(this,Je).video.codec,width:r(this,Je).video.width,height:r(this,Je).video.height,rotation:r(this,Je).video.rotation??0,decoderConfig:null},timescale:r(this,Je).video.frameRate??57600,samples:[],finalizedChunks:[],currentChunk:null,firstDecodeTimestamp:void 0,lastDecodeTimestamp:-1,timeToSampleTable:[],compositionTimeOffsetTable:[],lastTimescaleUnits:null,lastSample:null,compactlyCodedChunkTable:[]}),r(this,Je).audio&&(o(this,Ze,{id:r(this,Je).video?2:1,info:{type:"audio",codec:r(this,Je).audio.codec,numberOfChannels:r(this,Je).audio.numberOfChannels,sampleRate:r(this,Je).audio.sampleRate,decoderConfig:null},timescale:r(this,Je).audio.sampleRate,samples:[],finalizedChunks:[],currentChunk:null,firstDecodeTimestamp:void 0,lastDecodeTimestamp:-1,timeToSampleTable:[],compositionTimeOffsetTable:[],lastTimescaleUnits:null,lastSample:null,compactlyCodedChunkTable:[]}),"aac"===r(this,Je).audio.codec)){let e=h(this,pt,ct).call(this,2,r(this,Je).audio.sampleRate,r(this,Je).audio.numberOfChannels);r(this,Ze).info.decoderConfig={codec:r(this,Je).audio.codec,description:e,numberOfChannels:r(this,Je).audio.numberOfChannels,sampleRate:r(this,Je).audio.sampleRate}}},pt=new WeakSet,ct=function(e,t,i){let s=[96e3,88200,64e3,48e3,44100,32e3,24e3,22050,16e3,12e3,11025,8e3,7350].indexOf(t),a=i,r="";r+=e.toString(2).padStart(5,"0"),r+=s.toString(2).padStart(4,"0"),15===s&&(r+=t.toString(2).padStart(24,"0")),r+=a.toString(2).padStart(4,"0");let n=8*Math.ceil(r.length/8);r=r.padEnd(n,"0");let o=new Uint8Array(r.length/8);for(let e=0;e<r.length;e+=8)o[e/8]=parseInt(r.slice(e,e+8),2);return o},wt=new WeakSet,gt=function(e,t,i,s,a,r,n){let o=s/1e6,l=(s-(n??0))/1e6,d=a/1e6,f=h(this,kt,Tt).call(this,o,l,e);return o=f.presentationTimestamp,l=f.decodeTimestamp,r?.decoderConfig&&(null===e.info.decoderConfig?e.info.decoderConfig=r.decoderConfig:Object.assign(e.info.decoderConfig,r.decoderConfig)),{presentationTimestamp:o,decodeTimestamp:l,duration:d,data:t,size:t.byteLength,type:i,timescaleUnitsToNextSample:O(d,e.timescale)}},bt=new WeakSet,yt=function(e,t){"fragmented"!==r(this,Je).fastStart&&e.samples.push(t);const i=O(t.presentationTimestamp-t.decodeTimestamp,e.timescale);if(null!==e.lastTimescaleUnits){let s=O(t.decodeTimestamp,e.timescale,!1),a=Math.round(s-e.lastTimescaleUnits);if(e.lastTimescaleUnits+=a,e.lastSample.timescaleUnitsToNextSample=a,"fragmented"!==r(this,Je).fastStart){let t=M(e.timeToSampleTable);1===t.sampleCount?(t.sampleDelta=a,t.sampleCount++):t.sampleDelta===a?t.sampleCount++:(t.sampleCount--,e.timeToSampleTable.push({sampleCount:2,sampleDelta:a}));const s=M(e.compositionTimeOffsetTable);s.sampleCompositionTimeOffset===i?s.sampleCount++:e.compositionTimeOffsetTable.push({sampleCount:1,sampleCompositionTimeOffset:i})}}else e.lastTimescaleUnits=0,"fragmented"!==r(this,Je).fastStart&&(e.timeToSampleTable.push({sampleCount:1,sampleDelta:O(t.duration,e.timescale)}),e.compositionTimeOffsetTable.push({sampleCount:1,sampleCompositionTimeOffset:i}));e.lastSample=t;let s=!1;if(e.currentChunk){let i=t.presentationTimestamp-e.currentChunk.startTimestamp;if("fragmented"===r(this,Je).fastStart){let a=r(this,Ye)??r(this,Ze);const n=r(this,Je).minFragmentDuration??1;e===a&&"key"===t.type&&i>=n&&(s=!0,h(this,St,xt).call(this))}else s=i>=.5}else s=!0;s&&(e.currentChunk&&h(this,Ct,vt).call(this,e),e.currentChunk={startTimestamp:t.presentationTimestamp,samples:[]}),e.currentChunk.samples.push(t)},kt=new WeakSet,Tt=function(e,t,i){const s="strict"===r(this,Je).firstTimestampBehavior,a=-1===i.lastDecodeTimestamp;if(s&&a&&0!==t)throw new Error(`The first chunk for your media track must have a timestamp of 0 (received DTS=${t}).Non-zero first timestamps are often caused by directly piping frames or audio data from a MediaStreamTrack into the encoder. Their timestamps are typically relative to the age of thedocument, which is probably what you want.\n\nIf you want to offset all timestamps of a track such that the first one is zero, set firstTimestampBehavior: 'offset' in the options.\n`);if("offset"===r(this,Je).firstTimestampBehavior||"cross-track-offset"===r(this,Je).firstTimestampBehavior){let s;void 0===i.firstDecodeTimestamp&&(i.firstDecodeTimestamp=t),s="offset"===r(this,Je).firstTimestampBehavior?i.firstDecodeTimestamp:Math.min(r(this,Ye)?.firstDecodeTimestamp??1/0,r(this,Ze)?.firstDecodeTimestamp??1/0),t-=s,e-=s}if(t<i.lastDecodeTimestamp)throw new Error(`Timestamps must be monotonically increasing (DTS went from ${1e6*i.lastDecodeTimestamp} to ${1e6*t}).`);return i.lastDecodeTimestamp=t,{presentationTimestamp:e,decodeTimestamp:t}},Ct=new WeakSet,vt=function(e){if("fragmented"===r(this,Je).fastStart)throw new Error("Can't finalize individual chunks if 'fastStart' is set to 'fragmented'.");if(e.currentChunk)if(e.finalizedChunks.push(e.currentChunk),r(this,tt).push(e.currentChunk),0!==e.compactlyCodedChunkTable.length&&M(e.compactlyCodedChunkTable).samplesPerChunk===e.currentChunk.samples.length||e.compactlyCodedChunkTable.push({firstChunk:e.finalizedChunks.length,samplesPerChunk:e.currentChunk.samples.length}),"in-memory"!==r(this,Je).fastStart){e.currentChunk.offset=r(this,Ke).pos;for(let t of e.currentChunk.samples)r(this,Ke).write(t.data),t.data=null;h(this,zt,Et).call(this)}else e.currentChunk.offset=0},St=new WeakSet,xt=function(e=!0){if("fragmented"!==r(this,Je).fastStart)throw new Error("Can't finalize a fragment unless 'fastStart' is set to 'fragmented'.");let t=[r(this,Ye),r(this,Ze)].filter((e=>e&&e.currentChunk));if(0===t.length)return;let i=(s=this,a=it,{set _(e){o(s,a,e,n)},get _(){return r(s,a,l)}})._++;var s,a,n,l;if(1===i){let e=F(t,r(this,et),!0);r(this,Ke).writeBox(e)}let d=r(this,Ke).pos,f=ce(i,t);r(this,Ke).writeBox(f);{let e=V(!1),i=0;for(let e of t)for(let t of e.currentChunk.samples)i+=t.size;let s=r(this,Ke).measureBox(e)+i;s>=2**32&&(e.largeSize=!0,s=r(this,Ke).measureBox(e)+i),e.size=s,r(this,Ke).writeBox(e)}for(let e of t){e.currentChunk.offset=r(this,Ke).pos,e.currentChunk.moofOffset=d;for(let t of e.currentChunk.samples)r(this,Ke).write(t.data),t.data=null}let u=r(this,Ke).pos;r(this,Ke).seek(r(this,Ke).offsets.get(f));let m=ce(i,t);r(this,Ke).writeBox(m),r(this,Ke).seek(u);for(let e of t)e.finalizedChunks.push(e.currentChunk),r(this,tt).push(e.currentChunk),e.currentChunk=null;e&&h(this,zt,Et).call(this)},zt=new WeakSet,Et=function(){r(this,Ke)instanceof Ge&&r(this,Ke).flush()},At=new WeakSet,Mt=function(){if(r(this,rt))throw new Error("Cannot add new video or audio chunks after the file has been finalized.")},Wt=l,((a,r,n,o)=>{if(r&&"object"==typeof r||"function"==typeof r)for(let h of i(r))s.call(a,h)||h===n||e(a,h,{get:()=>r[h],enumerable:!(o=t(r,h))||o.enumerable});return a})(e({},"__esModule",{value:!0}),Wt)})();"object"==typeof module&&"object"==typeof module.exports&&Object.assign(module.exports,Mp4Muxer);
+
+</script>
+<script>
+/* =========================================================================
+   Expressive Studio — éditeur d'animation vectorielle 2D, fichier autonome.
+
+   Le modèle d'animation et le format .eaf sont portés depuis Expressive
+   Animator (Apache-2.0, © 2021 Zindex Software) :
+     src/Core/Animation/{Animation,Keyframe,Interpolation}.ts
+     src/Core/Animation/Animators/*          (propriétés animables)
+     src/Core/Project/AnimationMiddleware.ts (mode enregistrement)
+     src/Core/Project/{Exporters,Importers}/ (conteneur .eaf)
+
+   Le rendu, les outils d'édition et l'export sont des implémentations
+   indépendantes : le moteur d'origine (@zindex/canvas-engine, @zindex/skia-js)
+   n'est pas distribué publiquement.
+   ========================================================================= */
+(function () {
+'use strict';
+
+/* ------------------------------------------------------------- utilitaires */
+const $ = (id) => document.getElementById(id);
+const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
+const round3 = (v) => Math.round(v * 1000) / 1000;
+const DEG = Math.PI / 180;
+let uidCounter = 0;
+const uid = (p) => (p || 'id') + '-' + (++uidCounter) + '-' + Math.random().toString(36).slice(2, 7);
+
+function toast(message, kind) {
+  const el = $('toast');
+  el.textContent = message;
+  el.className = 'show ' + (kind || '');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => { el.className = ''; }, 2600);
+}
+
+function formatTime(ms) {
+  const sign = ms < 0 ? '-' : '';
+  ms = Math.abs(ms);
+  const m = Math.floor(ms / 60000);
+  const s = Math.floor((ms % 60000) / 1000);
+  const r = Math.round(ms % 1000);
+  return sign + m + ':' + String(s).padStart(2, '0') + '.' + String(r).padStart(3, '0');
+}
+
+/* ---------------------------------------------------------------- couleurs */
+const colorProbe = document.createElement('canvas').getContext('2d');
+
+function parseColor(value) {
+  if (value == null) return { r: 0, g: 0, b: 0, a: 1 };
+  if (typeof value === 'object' && 'r' in value) {
+    return { r: value.r | 0, g: value.g | 0, b: value.b | 0, a: value.a == null ? 1 : value.a };
+  }
+  // .eaf sérialise les couleurs via Color.code (entier). canvas-engine s'appuie
+  // sur Skia, dont SkColor est encodé en ARGB : hypothèse retenue ici.
+  if (typeof value === 'number') {
+    return { a: ((value >>> 24) & 255) / 255, r: (value >>> 16) & 255, g: (value >>> 8) & 255, b: value & 255 };
+  }
+  colorProbe.fillStyle = '#000000';
+  colorProbe.fillStyle = String(value);
+  const css = colorProbe.fillStyle;
+  if (css[0] === '#') {
+    const h = css.slice(1);
+    if (h.length === 3) return { r: parseInt(h[0] + h[0], 16), g: parseInt(h[1] + h[1], 16), b: parseInt(h[2] + h[2], 16), a: 1 };
+    return { r: parseInt(h.slice(0, 2), 16), g: parseInt(h.slice(2, 4), 16), b: parseInt(h.slice(4, 6), 16), a: 1 };
+  }
+  const m = css.match(/rgba?\(([^)]+)\)/);
+  if (m) {
+    const p = m[1].split(',').map(parseFloat);
+    return { r: p[0] | 0, g: p[1] | 0, b: p[2] | 0, a: p.length > 3 ? p[3] : 1 };
+  }
+  return { r: 0, g: 0, b: 0, a: 1 };
+}
+const colorToCss = (c, mul) => 'rgba(' + (c.r | 0) + ',' + (c.g | 0) + ',' + (c.b | 0) + ',' +
+  clamp((c.a == null ? 1 : c.a) * (mul == null ? 1 : mul), 0, 1) + ')';
+const colorToHex = (c) => '#' + [c.r, c.g, c.b].map(v => clamp(v | 0, 0, 255).toString(16).padStart(2, '0')).join('');
+const colorToCode = (c) => (((Math.round((c.a == null ? 1 : c.a) * 255) & 255) << 24) |
+  ((c.r & 255) << 16) | ((c.g & 255) << 8) | (c.b & 255)) >>> 0;
+
+/* --------------------------------- interpolation (Core/Animation/Interpolation.ts) */
+const getRangePercent = (v, a, b) => (b === a ? 0 : (v - a) / (b - a));
+const interpolateNumber = (f, t, p) => f + p * (t - f);
+const interpolatePositiveNumber = (f, t, p) => Math.max(0, interpolateNumber(f, t, p));
+const interpolatePercent = (f, t, p) => clamp(interpolateNumber(f, t, p), 0, 1);
+const interpolateDiscrete = (f, t, p) => (p < 0.5 ? f : t);
+const interpolateColorComponent = (f, t, p) => clamp(Math.round(f + p * (t - f)), 0, 255);
+const interpolateAlphaComponent = (f, t, p) => clamp(round3((f == null ? 1 : f) + p * ((t == null ? 1 : t) - (f == null ? 1 : f))), 0, 1);
+const interpolatePoint = (f, t, p) => ({ x: interpolateNumber(f.x, t.x, p), y: interpolateNumber(f.y, t.y, p) });
+
+function interpolateColor(f, t, p) {
+  if (p <= 0) return f;
+  if (p >= 1) return t;
+  return {
+    r: interpolateColorComponent(f.r, t.r, p),
+    g: interpolateColorComponent(f.g, t.g, p),
+    b: interpolateColorComponent(f.b, t.b, p),
+    a: interpolateAlphaComponent(f.a, t.a, p)
+  };
+}
+function interpolatePoly(f, t, p) {
+  if (!f || !t || f.length !== t.length) return interpolateDiscrete(f, t, p);
+  return f.map((pt, i) => interpolatePoint(pt, t[i], p));
+}
+function interpolateBrush(f, t, p) {
+  if (!f || !t || f.kind !== t.kind) return interpolateDiscrete(f, t, p);
+  if (f.kind === 'solid') return { kind: 'solid', color: interpolateColor(f.color, t.color, p) };
+  if (f.stops && t.stops && f.stops.length === t.stops.length) {
+    return Object.assign({}, f, {
+      start: f.start && t.start ? interpolatePoint(f.start, t.start, p) : f.start,
+      end: f.end && t.end ? interpolatePoint(f.end, t.end, p) : f.end,
+      stops: f.stops.map((s, i) => ({
+        offset: interpolateNumber(s.offset, t.stops[i].offset, p),
+        color: interpolateColor(s.color, t.stops[i].color, p)
+      }))
+    });
+  }
+  return interpolateDiscrete(f, t, p);
+}
+function interpolateRectRadius(f, t, p) {
+  if (!f || !t) return interpolateDiscrete(f, t, p);
+  return { rx: interpolatePositiveNumber(f.rx, t.rx, p), ry: interpolatePositiveNumber(f.ry, t.ry, p), multiple: p < 0.5 ? f.multiple : t.multiple };
+}
+
+/* Propriétés animables, reprises des Animators du dépôt d'origine. */
+const PROPERTY_SPEC = {
+  position:         { label: 'Position',        interpolate: interpolatePoint,           kind: 'point' },
+  anchor:           { label: 'Point d’ancrage', interpolate: interpolatePoint,      kind: 'point' },
+  scale:            { label: 'Échelle',         interpolate: interpolatePoint,           kind: 'point' },
+  rotate:           { label: 'Rotation',        interpolate: interpolateNumber,          kind: 'number' },
+  skewAngle:        { label: 'Inclinaison',     interpolate: interpolateNumber,          kind: 'number' },
+  skewAxis:         { label: 'Axe d’inclinaison', interpolate: interpolateNumber,   kind: 'number' },
+  opacity:          { label: 'Opacité',         interpolate: interpolatePercent,         kind: 'percent' },
+  fill:             { label: 'Remplissage',     interpolate: interpolateBrush,           kind: 'brush' },
+  fillOpacity:      { label: 'Opacité du fond', interpolate: interpolatePercent,         kind: 'percent' },
+  strokeBrush:      { label: 'Contour',         interpolate: interpolateBrush,           kind: 'brush' },
+  strokeOpacity:    { label: 'Opacité contour', interpolate: interpolatePercent,         kind: 'percent' },
+  strokeLineWidth:  { label: 'Épaisseur',       interpolate: interpolatePositiveNumber,  kind: 'number' },
+  strokeDashOffset: { label: 'Décalage tirets', interpolate: interpolateNumber,          kind: 'number' },
+  width:            { label: 'Largeur',         interpolate: interpolatePositiveNumber,  kind: 'number' },
+  height:           { label: 'Hauteur',         interpolate: interpolatePositiveNumber,  kind: 'number' },
+  radius:           { label: 'Rayon des coins', interpolate: interpolateRectRadius,      kind: 'rect-shape-radius' },
+  sides:            { label: 'Côtés',           interpolate: interpolatePositiveNumber,  kind: 'number' },
+  angle:            { label: 'Angle',           interpolate: interpolateNumber,          kind: 'number' },
+  outerRadius:      { label: 'Rayon externe',   interpolate: interpolatePositiveNumber,  kind: 'number' },
+  innerRadius:      { label: 'Rayon interne',   interpolate: interpolatePositiveNumber,  kind: 'number' },
+  cornerRadius:     { label: 'Arrondi',         interpolate: interpolatePositiveNumber,  kind: 'number' },
+  points:           { label: 'Sommets',         interpolate: interpolatePoly,            kind: 'point-array' },
+  fontSize:         { label: 'Corps',           interpolate: interpolatePositiveNumber,  kind: 'number' },
+  text:             { label: 'Texte',           interpolate: interpolateDiscrete,        kind: 'generic' }
+};
+const propertyLabel = (p) => (PROPERTY_SPEC[p] && PROPERTY_SPEC[p].label) || p;
+const interpolatorFor = (p) => (PROPERTY_SPEC[p] && PROPERTY_SPEC[p].interpolate) || interpolateDiscrete;
+
+/* ------------------------------------------------------ accélérations */
+/* Le dépôt d'origine ne déclare qu'une interface Easing, sans implémentation.
+   On fournit ici les courbes de Bézier cubiques habituelles. */
+const EASINGS = {
+  linear: null,
+  'ease': [0.25, 0.1, 0.25, 1],
+  'ease-in': [0.42, 0, 1, 1],
+  'ease-out': [0, 0, 0.58, 1],
+  'ease-in-out': [0.42, 0, 0.58, 1]
+};
+
+function cubicBezierEase(c, t) {
+  const x1 = c[0], y1 = c[1], x2 = c[2], y2 = c[3];
+  const cx = 3 * x1, bx = 3 * (x2 - x1) - cx, ax = 1 - cx - bx;
+  const cy = 3 * y1, by = 3 * (y2 - y1) - cy, ay = 1 - cy - by;
+  const sampleX = (u) => ((ax * u + bx) * u + cx) * u;
+  const sampleY = (u) => ((ay * u + by) * u + cy) * u;
+  const slope = (u) => (3 * ax * u + 2 * bx) * u + cx;
+  let u = t;
+  for (let i = 0; i < 8; i++) {
+    const x = sampleX(u) - t;
+    if (Math.abs(x) < 1e-6) return sampleY(u);
+    const d = slope(u);
+    if (Math.abs(d) < 1e-6) break;
+    u -= x / d;
+  }
+  let lo = 0, hi = 1;
+  u = t;
+  for (let i = 0; i < 24; i++) {
+    const x = sampleX(u);
+    if (Math.abs(x - t) < 1e-6) break;
+    if (x > t) hi = u; else lo = u;
+    u = (lo + hi) / 2;
+  }
+  return sampleY(u);
+}
+const applyEasing = (easing, p) => {
+  if (!easing) return p;
+  const curve = typeof easing === 'string' ? EASINGS[easing] : easing;
+  return curve ? cubicBezierEase(curve, p) : p;
+};
+
+/* ------------------------------- Animation (port de Core/Animation/Animation.ts) */
+class Keyframe {
+  constructor(value, offset, easing, id) {
+    this.id = id || uid('kf');
+    this.value = value;
+    this.offset = offset || 0;
+    this.easing = easing || null;
+  }
+  clone() { return new Keyframe(cloneValue(this.value), this.offset, this.easing); }
+}
+
+class Animation {
+  constructor(property, keyframes, disabled) {
+    this.property = property;
+    this.interpolate = interpolatorFor(property);
+    this.keyframes = (keyframes || []).slice().sort((a, b) => a.offset - b.offset);
+    this.disabled = !!disabled;
+  }
+  get hasKeyframes() { return this.keyframes.length > 0; }
+  get isAnimated() { return !this.disabled && this.keyframes.length > 1; }
+  sort() { this.keyframes.sort((a, b) => a.offset - b.offset); return this; }
+  keyframeAt(offset, tolerance) {
+    const t = tolerance == null ? 0.5 : tolerance;
+    return this.keyframes.find(k => Math.abs(k.offset - offset) <= t) || null;
+  }
+  setValueAt(offset, value, easing) {
+    const existing = this.keyframeAt(offset);
+    if (existing) {
+      existing.value = value;
+      if (easing !== undefined) existing.easing = easing;
+      return existing;
+    }
+    const k = new Keyframe(value, offset, easing === undefined ? null : easing);
+    this.keyframes.push(k);
+    this.sort();
+    return k;
+  }
+  remove(keyframe) {
+    const i = this.keyframes.indexOf(keyframe);
+    if (i === -1) return false;
+    this.keyframes.splice(i, 1);
+    return true;
+  }
+  /* Recherche dichotomique — l'original balayait linéairement. */
+  getValueAtOffset(offset) {
+    const kf = this.keyframes, last = kf.length - 1;
+    if (last < 0) return null;
+    if (last === 0) return kf[0].value;
+    if (offset <= kf[0].offset) return kf[0].value;
+    if (offset >= kf[last].offset) return kf[last].value;
+    let lo = 0, hi = last;
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1;
+      if (kf[mid].offset <= offset) lo = mid; else hi = mid;
+    }
+    const from = kf[lo], to = kf[hi];
+    const p = applyEasing(from.easing, getRangePercent(offset, Math.max(from.offset, 0), Math.max(to.offset, 0)));
+    return this.interpolate(from.value, to.value, p);
+  }
+  clone() {
+    return new Animation(this.property, this.keyframes.map(k => k.clone()), this.disabled);
+  }
+}
+
+function cloneValue(v) {
+  if (v == null || typeof v !== 'object') return v;
+  if (Array.isArray(v)) return v.map(cloneValue);
+  const out = {};
+  for (const k in v) out[k] = cloneValue(v[k]);
+  return out;
+}
+
+/* ======================== document et éléments =========================== */
+const DEFAULT_PROPS = () => ({
+  position: { x: 0, y: 0 },
+  anchor: { x: 0, y: 0 },
+  scale: { x: 1, y: 1 },
+  rotate: 0,
+  skewAngle: 0,
+  skewAxis: 0,
+  opacity: 1,
+  fill: { kind: 'solid', color: parseColor('#8f52f5') },
+  fillOpacity: 1,
+  strokeBrush: { kind: 'solid', color: parseColor('#ffffff') },
+  strokeOpacity: 1,
+  strokeLineWidth: 0,
+  strokeDashArray: null,
+  strokeDashOffset: 0,
+  lineCap: 'butt',
+  lineJoin: 'miter',
+  miterLimit: 4,
+  fillRule: 'nonzero'
+});
+
+const TYPE_DEFAULTS = {
+  rect: { width: 200, height: 140, radius: { rx: 0, ry: 0, multiple: true } },
+  ellipse: { width: 160, height: 160 },
+  'regular-polygon': { sides: 6, radius: 90, angle: 0, cornerRadius: 0 },
+  star: { sides: 5, outerRadius: 100, innerRadius: 45, angle: 0, outerRotate: 0, innerRotate: 0 },
+  text: { text: 'Texte', fontFamily: 'Arial, Helvetica, sans-serif', fontSize: 64, fontWeight: 700, fontStyle: 'normal', align: 'left' },
+  poly: { points: [], isClosed: true },
+  path: { path: [] },
+  group: {}
+};
+
+const TYPE_LABEL = {
+  rect: 'Rectangle', ellipse: 'Ellipse', 'regular-polygon': 'Polygone', star: 'Étoile',
+  text: 'Texte', poly: 'Polyligne', path: 'Tracé', group: 'Groupe', mask: 'Masque',
+  symbol: 'Symbole', 'clip-path': 'Masque de tracé'
+};
+
+function createElement(type, overrides, title) {
+  const el = {
+    id: uid('el'),
+    type: type,
+    title: title || TYPE_LABEL[type] || type,
+    hidden: false,
+    locked: false,
+    props: Object.assign(DEFAULT_PROPS(), cloneValue(TYPE_DEFAULTS[type] || {}), overrides || {}),
+    animations: {},
+    children: [],
+    parent: null
+  };
+  if (type === 'group' || type === 'text') el.props.strokeLineWidth = 0;
+  return el;
+}
+
+function createDocument(width, height) {
+  return {
+    id: uid('doc'),
+    title: 'Sans titre',
+    width: width || 1280,
+    height: height || 720,
+    startTime: 0,
+    endTime: 5000,
+    fps: 25,
+    background: '#ffffff',
+    children: []
+  };
+}
+
+/* Parcours ----------------------------------------------------------------- */
+function* walk(list) {
+  for (const el of list) {
+    yield el;
+    if (el.children && el.children.length) yield* walk(el.children);
+  }
+}
+function relink(list, parent) {
+  for (const el of list) {
+    el.parent = parent || null;
+    relink(el.children || [], el);
+  }
+}
+function findById(doc, id) {
+  for (const el of walk(doc.children)) if (el.id === id) return el;
+  return null;
+}
+function siblingsOf(doc, el) { return el.parent ? el.parent.children : doc.children; }
+
+function removeElement(doc, el) {
+  const list = siblingsOf(doc, el);
+  const i = list.indexOf(el);
+  if (i !== -1) list.splice(i, 1);
+}
+
+/* État d'un élément à l'instant t : les animations écrasent les propriétés. */
+function stateAt(element, time) {
+  const s = Object.assign({}, element.props);
+  for (const property in element.animations) {
+    const animation = element.animations[property];
+    if (!animation || animation.disabled || !animation.hasKeyframes) continue;
+    const value = animation.getValueAtOffset(time);
+    if (value !== null && value !== undefined) s[property] = value;
+  }
+  return s;
+}
+
+/* Valeur courante d'une propriété (animée ou statique) à l'instant t. */
+function propertyValue(element, property, time) {
+  const animation = element.animations[property];
+  if (animation && animation.hasKeyframes && !animation.disabled) {
+    const v = animation.getValueAtOffset(time);
+    if (v !== null && v !== undefined) return v;
+  }
+  return element.props[property];
+}
+
+/* ------------------------------- géométrie ------------------------------- */
+const measureCtx = document.createElement('canvas').getContext('2d');
+
+function fontString(s) {
+  return (s.fontStyle || 'normal') + ' ' + (s.fontWeight || 400) + ' ' + (s.fontSize || 48) + 'px ' + (s.fontFamily || 'sans-serif');
+}
+
+/* Boîte englobante dans l'espace local de l'élément. */
+function localBounds(element, time) {
+  const s = stateAt(element, time);
+  switch (element.type) {
+    case 'rect':
+    case 'ellipse':
+      return { x: 0, y: 0, w: s.width || 0, h: s.height || 0 };
+    case 'regular-polygon': {
+      const r = s.radius || 0;
+      return { x: -r, y: -r, w: 2 * r, h: 2 * r };
+    }
+    case 'star': {
+      const r = Math.max(s.outerRadius || 0, s.innerRadius || 0);
+      return { x: -r, y: -r, w: 2 * r, h: 2 * r };
+    }
+    case 'text': {
+      measureCtx.font = fontString(s);
+      const m = measureCtx.measureText(s.text || '');
+      const size = s.fontSize || 48;
+      return { x: 0, y: -size * 0.8, w: Math.max(1, m.width), h: size * 1.15 };
+    }
+    case 'poly':
+    case 'path': {
+      const pts = element.type === 'poly' ? (s.points || []) : (s.path || []);
+      if (!pts.length) return { x: 0, y: 0, w: 0, h: 0 };
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (const p of pts) {
+        x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y);
+        x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y);
+      }
+      return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+    }
+    case 'group': {
+      let box = null;
+      for (const child of element.children) {
+        // dans l'espace local du groupe : seule la matrice de l'enfant s'applique
+        const b = transformBox(localBounds(child, time), localMatrix(child, time));
+        box = box ? unionBox(box, b) : b;
+      }
+      return box || { x: 0, y: 0, w: 0, h: 0 };
+    }
+    default:
+      return { x: 0, y: 0, w: 0, h: 0 };
+  }
+}
+
+function unionBox(a, b) {
+  const x0 = Math.min(a.x, b.x), y0 = Math.min(a.y, b.y);
+  const x1 = Math.max(a.x + a.w, b.x + b.w), y1 = Math.max(a.y + a.h, b.y + b.h);
+  return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+}
+
+/* Matrice locale : translate(position) · rotate · skew · scale · translate(-ancre) */
+function localMatrix(element, time) {
+  const s = stateAt(element, time);
+  const m = new DOMMatrix();
+  m.translateSelf(s.position.x, s.position.y);
+  if (s.rotate) m.rotateSelf(s.rotate);
+  if (s.skewAngle) {
+    const axis = s.skewAxis || 0;
+    m.rotateSelf(axis);
+    m.multiplySelf(new DOMMatrix([1, 0, Math.tan(s.skewAngle * DEG), 1, 0, 0]));
+    m.rotateSelf(-axis);
+  }
+  if (s.scale && (s.scale.x !== 1 || s.scale.y !== 1)) m.scaleSelf(s.scale.x, s.scale.y);
+  if (s.anchor && (s.anchor.x || s.anchor.y)) m.translateSelf(-s.anchor.x, -s.anchor.y);
+  return m;
+}
+
+/* Matrice absolue, en remontant la chaîne des parents. */
+function worldMatrix(element, time) {
+  const chain = [];
+  for (let e = element; e; e = e.parent) chain.unshift(e);
+  let m = new DOMMatrix();
+  for (const e of chain) m = m.multiply(localMatrix(e, time));
+  return m;
+}
+
+function transformBox(box, matrix) {
+  const pts = [
+    matrix.transformPoint({ x: box.x, y: box.y }),
+    matrix.transformPoint({ x: box.x + box.w, y: box.y }),
+    matrix.transformPoint({ x: box.x + box.w, y: box.y + box.h }),
+    matrix.transformPoint({ x: box.x, y: box.y + box.h })
+  ];
+  const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+  return { x: Math.min.apply(null, xs), y: Math.min.apply(null, ys),
+           w: Math.max.apply(null, xs) - Math.min.apply(null, xs),
+           h: Math.max.apply(null, ys) - Math.min.apply(null, ys) };
+}
+
+function worldBounds(element, time, parentMatrix) {
+  const m = (parentMatrix || new DOMMatrix()).multiply(localMatrix(element, time));
+  return transformBox(localBounds(element, time), m);
+}
+
+/* Quatre coins de la boîte locale, exprimés dans l'espace du document. */
+function boxCorners(element, time) {
+  const b = localBounds(element, time);
+  const m = worldMatrix(element, time);
+  return [
+    m.transformPoint({ x: b.x, y: b.y }),
+    m.transformPoint({ x: b.x + b.w, y: b.y }),
+    m.transformPoint({ x: b.x + b.w, y: b.y + b.h }),
+    m.transformPoint({ x: b.x, y: b.y + b.h })
+  ];
+}
+
+function pointInBox(point, box, margin) {
+  const m = margin || 0;
+  return point.x >= box.x - m && point.x <= box.x + box.w + m &&
+         point.y >= box.y - m && point.y <= box.y + box.h + m;
+}
+
+/* Test de survol : on repasse le point dans l'espace local de l'élément. */
+function hitTest(element, scenePoint, time) {
+  if (element.hidden) return false;
+  const m = worldMatrix(element, time);
+  let inv;
+  try { inv = m.inverse(); } catch (e) { return false; }
+  const local = inv.transformPoint(scenePoint);
+  if (element.type === 'group') {
+    for (let i = element.children.length - 1; i >= 0; i--) {
+      if (hitTest(element.children[i], scenePoint, time)) return true;
+    }
+    return false;
+  }
+  const b = localBounds(element, time);
+  const s = stateAt(element, time);
+  const grow = (s.strokeLineWidth || 0) / 2;
+  return pointInBox(local, b, grow + 1);
+}
+
+function pickElement(doc, scenePoint, time) {
+  for (let i = doc.children.length - 1; i >= 0; i--) {
+    const el = doc.children[i];
+    if (el.locked || el.hidden) continue;
+    if (hitTest(el, scenePoint, time)) return el;
+  }
+  return null;
+}
+
+/* ============================== rendu Canvas 2D ==========================
+   Remplace @zindex/canvas-engine (Skia/WebAssembly), non distribué.
+   ======================================================================== */
+function makePaint(ctx, brush, alpha) {
+  if (!brush) return null;
+  if (brush.kind === 'solid') return colorToCss(brush.color, alpha);
+  let g = null;
+  if (brush.kind === 'linear' && brush.start && brush.end) {
+    g = ctx.createLinearGradient(brush.start.x, brush.start.y, brush.end.x, brush.end.y);
+  } else if (brush.kind === 'radial' && brush.center) {
+    g = ctx.createRadialGradient(brush.center.x, brush.center.y, 0, brush.center.x, brush.center.y, brush.radius || 1);
+  } else if (brush.kind === 'conical' && brush.center && ctx.createConicGradient) {
+    g = ctx.createConicGradient((brush.startAngle || 0) * DEG, brush.center.x, brush.center.y);
+  }
+  if (!g) return null;
+  for (const s of (brush.stops || [])) g.addColorStop(clamp(s.offset, 0, 1), colorToCss(s.color, alpha));
+  return g;
+}
+
+function applyTransform(ctx, s) {
+  ctx.translate(s.position.x, s.position.y);
+  if (s.rotate) ctx.rotate(s.rotate * DEG);
+  if (s.skewAngle) {
+    const axis = (s.skewAxis || 0) * DEG;
+    ctx.rotate(axis);
+    ctx.transform(1, 0, Math.tan(s.skewAngle * DEG), 1, 0, 0);
+    ctx.rotate(-axis);
+  }
+  if (s.scale && (s.scale.x !== 1 || s.scale.y !== 1)) ctx.scale(s.scale.x, s.scale.y);
+  if (s.anchor && (s.anchor.x || s.anchor.y)) ctx.translate(-s.anchor.x, -s.anchor.y);
+}
+
+function traceShape(ctx, type, s) {
+  ctx.beginPath();
+  if (type === 'rect') {
+    const w = s.width || 0, h = s.height || 0, r = s.radius;
+    if (r && (r.rx > 0 || r.ry > 0) && ctx.roundRect) {
+      const rx = Math.min(r.rx || 0, w / 2);
+      const ry = Math.min(r.multiple === false ? (r.rx || 0) : (r.ry == null ? r.rx : r.ry), h / 2);
+      ctx.roundRect(0, 0, w, h, [{ x: rx, y: ry }]);
+    } else ctx.rect(0, 0, w, h);
+    return;
+  }
+  if (type === 'ellipse') {
+    const w = s.width || 0, h = s.height || 0;
+    ctx.ellipse(w / 2, h / 2, Math.abs(w / 2), Math.abs(h / 2), 0, 0, Math.PI * 2);
+    return;
+  }
+  if (type === 'regular-polygon') {
+    const n = Math.max(3, Math.round(s.sides || 3)), r = s.radius || 0;
+    const a0 = (s.angle || 0) * DEG - Math.PI / 2;
+    for (let i = 0; i < n; i++) {
+      const a = a0 + (i * 2 * Math.PI) / n;
+      const x = Math.cos(a) * r, y = Math.sin(a) * r;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    return;
+  }
+  if (type === 'star') {
+    const n = Math.max(3, Math.round(s.sides || 5));
+    const ro = s.outerRadius || 0, ri = s.innerRadius == null ? ro / 2 : s.innerRadius;
+    const a0 = (s.angle || 0) * DEG - Math.PI / 2;
+    for (let i = 0; i < n * 2; i++) {
+      const r = i % 2 === 0 ? ro : ri;
+      const extra = (i % 2 === 0 ? (s.outerRotate || 0) : (s.innerRotate || 0)) * DEG;
+      const a = a0 + extra + (i * Math.PI) / n;
+      const x = Math.cos(a) * r, y = Math.sin(a) * r;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    return;
+  }
+  if (type === 'poly') {
+    const pts = s.points || [];
+    if (!pts.length) return;
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+    if (s.isClosed !== false) ctx.closePath();
+    return;
+  }
+  if (type === 'path') {
+    const nodes = s.path || [];
+    if (!nodes.length) return;
+    const handle = (node, h) => (h ? { x: node.x + (h.x || 0), y: node.y + (h.y || 0) } : { x: node.x, y: node.y });
+    ctx.moveTo(nodes[0].x, nodes[0].y);
+    for (let i = 1; i < nodes.length; i++) {
+      const a = nodes[i - 1], b = nodes[i];
+      const c1 = handle(a, a.handleOut), c2 = handle(b, b.handleIn);
+      ctx.bezierCurveTo(c1.x, c1.y, c2.x, c2.y, b.x, b.y);
+    }
+    const first = nodes[0], last = nodes[nodes.length - 1];
+    const c1 = handle(last, last.handleOut), c2 = handle(first, first.handleIn);
+    ctx.bezierCurveTo(c1.x, c1.y, c2.x, c2.y, first.x, first.y);
+    ctx.closePath();
+  }
+}
+
+function paintCurrent(ctx, s) {
+  const fill = makePaint(ctx, s.fill, s.fillOpacity == null ? 1 : s.fillOpacity);
+  if (fill) {
+    ctx.fillStyle = fill;
+    ctx.fill(s.fillRule === 'evenodd' ? 'evenodd' : 'nonzero');
+  }
+  const w = s.strokeLineWidth || 0;
+  if (w > 0) {
+    const stroke = makePaint(ctx, s.strokeBrush, s.strokeOpacity == null ? 1 : s.strokeOpacity);
+    if (stroke) {
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = w;
+      ctx.lineCap = s.lineCap || 'butt';
+      ctx.lineJoin = s.lineJoin || 'miter';
+      ctx.miterLimit = s.miterLimit || 4;
+      if (s.strokeDashArray && s.strokeDashArray.length) {
+        ctx.setLineDash(s.strokeDashArray);
+        ctx.lineDashOffset = s.strokeDashOffset || 0;
+      } else ctx.setLineDash([]);
+      ctx.stroke();
+    }
+  }
+}
+
+function drawElement(ctx, element, time) {
+  if (element.hidden) return;
+  const s = stateAt(element, time);
+  const opacity = clamp(s.opacity == null ? 1 : s.opacity, 0, 1);
+  if (opacity <= 0) return;
+
+  ctx.save();
+  ctx.globalAlpha *= opacity;
+  applyTransform(ctx, s);
+
+  if (element.type === 'text') {
+    ctx.font = fontString(s);
+    ctx.textBaseline = 'alphabetic';
+    ctx.textAlign = s.align || 'left';
+    const fill = makePaint(ctx, s.fill, s.fillOpacity == null ? 1 : s.fillOpacity);
+    if (fill) { ctx.fillStyle = fill; ctx.fillText(s.text || '', 0, 0); }
+    if ((s.strokeLineWidth || 0) > 0) {
+      const stroke = makePaint(ctx, s.strokeBrush, s.strokeOpacity == null ? 1 : s.strokeOpacity);
+      if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = s.strokeLineWidth; ctx.strokeText(s.text || '', 0, 0); }
+    }
+  } else if (element.type === 'clip-path') {
+    traceShape(ctx, 'path', s);
+    ctx.clip();
+  } else if (element.type !== 'group' && element.type !== 'mask' && element.type !== 'symbol') {
+    traceShape(ctx, element.type, s);
+    paintCurrent(ctx, s);
+  }
+
+  for (const child of element.children || []) drawElement(ctx, child, time);
+  ctx.restore();
+}
+
+/* Rendu du document seul, utilisé aussi par l'export. */
+function renderDocument(ctx, doc, time, options) {
+  options = options || {};
+  const scale = options.scale || 1;
+  const w = Math.round(doc.width * scale), h = Math.round(doc.height * scale);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  const bg = options.background === undefined ? doc.background : options.background;
+  if (bg && bg !== 'transparent') { ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h); }
+  ctx.save();
+  ctx.scale(scale, scale);
+  ctx.globalAlpha = 1;
+  for (const el of doc.children) drawElement(ctx, el, time);
+  ctx.restore();
+}
+
+/* ===================== format .eaf : écriture et lecture =================
+   Conteneur identique à NativeAnimationExporter.ts :
+     [magic 0x65377865 "ex7e"][0x01][uint32 taille][manifeste gzip]
+     [0x03][uint32 taille][document gzip] …  [0xef]
+   Chaque bloc est du JSON compressé en gzip.
+   ======================================================================== */
+const ANIM_TYPE_BY_KIND = {
+  point: 'point', brush: 'brush', 'point-array': 'point-array',
+  'rect-shape-radius': 'rect-shape-radius', path: 'path', 'path-node': 'path-node'
+};
+
+function serBrush(b) {
+  if (!b) return null;
+  if (b.kind === 'solid') return { type: 0, color: colorToCode(b.color) };
+  const stops = (b.stops || []).map(s => ({ color: colorToCode(s.color), offset: s.offset }));
+  if (b.kind === 'linear') return { type: 1, spread: 0, stopColors: stops, transform: null, start: b.start, end: b.end };
+  if (b.kind === 'radial') return { type: 2, spread: 0, stopColors: stops, transform: null, center: b.center, radius: b.radius };
+  if (b.kind === 'conical') return { type: 3, spread: 0, stopColors: stops, transform: null, center: b.center, startAngle: b.startAngle, endAngle: b.endAngle };
+  return null;
+}
+
+function desBrush(d) {
+  if (!d) return null;
+  if (d.color !== undefined) return { kind: 'solid', color: parseColor(d.color) };
+  const stops = (d.stopColors || []).map(s => ({ offset: s.offset, color: parseColor(s.color) }));
+  if (d.start && d.end) return { kind: 'linear', start: d.start, end: d.end, stops: stops };
+  if (d.center && d.radius !== undefined) return { kind: 'radial', center: d.center, radius: d.radius, stops: stops };
+  if (d.center && d.startAngle !== undefined) return { kind: 'conical', center: d.center, startAngle: d.startAngle, endAngle: d.endAngle, stops: stops };
+  return null;
+}
+
+const CAPS = ['butt', 'round', 'square'];
+const JOINS = ['miter', 'round', 'bevel'];
+
+function serElement(el) {
+  const p = el.props;
+  const data = {
+    id: el.id, title: el.title, type: el.type, locked: !!el.locked, hidden: !!el.hidden,
+    properties: {
+      element: {
+        anchor: p.anchor, scale: p.scale, position: p.position,
+        rotate: p.rotate, skewAngle: p.skewAngle, skewAxis: p.skewAxis,
+        orientation: 0, opacity: p.opacity, blend: 0, isolate: false
+      }
+    }
+  };
+  if (el.type !== 'group') {
+    data.properties.vector = {
+      stroke: {
+        brush: serBrush(p.strokeBrush), width: p.strokeLineWidth,
+        lineCap: Math.max(0, CAPS.indexOf(p.lineCap)), lineJoin: Math.max(0, JOINS.indexOf(p.lineJoin)),
+        miterLimit: p.miterLimit, dashes: p.strokeDashArray, offset: p.strokeDashOffset
+      },
+      fill: serBrush(p.fill), fillOpacity: p.fillOpacity, strokeOpacity: p.strokeOpacity,
+      paintOrder: 0, fillRule: p.fillRule === 'evenodd' ? 1 : 0
+    };
+  }
+  switch (el.type) {
+    case 'rect': data.properties.rect = { width: p.width, height: p.height, radius: p.radius }; break;
+    case 'ellipse': data.properties.ellipse = { width: p.width, height: p.height }; break;
+    case 'regular-polygon': data.properties.regularPolygon = { sides: p.sides, radius: p.radius, cornerRadius: p.cornerRadius, angle: p.angle }; break;
+    case 'star': data.properties.star = {
+      sides: p.sides, outerRotate: p.outerRotate, outerRadius: p.outerRadius, outerCornerRadius: 0,
+      innerRotate: p.innerRotate, innerRadius: p.innerRadius, innerCornerRadius: 0, angle: p.angle
+    }; break;
+    case 'poly': data.properties.poly = { points: p.points, isClosed: p.isClosed }; break;
+    case 'path': data.properties.path = { path: p.path }; break;
+    case 'text': data.properties.text = {
+      text: p.text,
+      font: { family: p.fontFamily, style: p.fontStyle, weight: p.fontWeight, size: p.fontSize },
+      align: p.align
+    }; break;
+    case 'group': data.properties.group = {}; break;
+  }
+  if (el.children && el.children.length) data.children = el.children.map(serElement);
+  return data;
+}
+
+function desElement(data) {
+  const p = data.properties || {};
+  const e = p.element || {}, v = p.vector || {}, pen = v.stroke || {};
+  const props = Object.assign(DEFAULT_PROPS(), {
+    position: e.position || { x: 0, y: 0 },
+    anchor: e.anchor || { x: 0, y: 0 },
+    scale: e.scale || { x: 1, y: 1 },
+    rotate: e.rotate || 0,
+    skewAngle: e.skewAngle || 0,
+    skewAxis: e.skewAxis || 0,
+    opacity: e.opacity == null ? 1 : e.opacity,
+    fill: desBrush(v.fill),
+    fillOpacity: v.fillOpacity == null ? 1 : v.fillOpacity,
+    strokeBrush: desBrush(pen.brush),
+    strokeOpacity: v.strokeOpacity == null ? 1 : v.strokeOpacity,
+    strokeLineWidth: pen.width || 0,
+    strokeDashArray: pen.dashes || null,
+    strokeDashOffset: pen.offset || 0,
+    lineCap: CAPS[pen.lineCap | 0] || 'butt',
+    lineJoin: JOINS[pen.lineJoin | 0] || 'miter',
+    miterLimit: pen.miterLimit || 4,
+    fillRule: v.fillRule === 1 ? 'evenodd' : 'nonzero'
+  });
+  if (p.rect) Object.assign(props, { width: p.rect.width, height: p.rect.height, radius: p.rect.radius || { rx: 0, ry: 0, multiple: true } });
+  if (p.ellipse) Object.assign(props, { width: p.ellipse.width, height: p.ellipse.height });
+  if (p.regularPolygon) Object.assign(props, p.regularPolygon);
+  if (p.star) Object.assign(props, p.star);
+  if (p.poly) Object.assign(props, { points: p.poly.points, isClosed: p.poly.isClosed });
+  if (p.path) props.path = p.path.path;
+  if (p.clipPath) props.path = p.clipPath.path;
+  if (p.text) {
+    const f = p.text.font || {};
+    Object.assign(props, {
+      text: p.text.text, fontFamily: f.family || 'Arial, Helvetica, sans-serif',
+      fontStyle: f.style || 'normal', fontWeight: f.weight || 400, fontSize: f.size || 48,
+      align: p.text.align || 'left'
+    });
+  }
+  const el = {
+    id: data.id || uid('el'), type: data.type, title: data.title || TYPE_LABEL[data.type] || data.type,
+    hidden: !!data.hidden, locked: !!data.locked, props: props, animations: {},
+    children: (data.children || []).map(desElement), parent: null
+  };
+  return el;
+}
+
+function serAnimations(doc) {
+  const out = {};
+  for (const el of walk(doc.children)) {
+    const keys = Object.keys(el.animations);
+    if (!keys.length) continue;
+    const entry = {};
+    for (const property of keys) {
+      const animation = el.animations[property];
+      if (!animation.hasKeyframes) continue;
+      const spec = PROPERTY_SPEC[property] || {};
+      const kind = ANIM_TYPE_BY_KIND[spec.kind] || 'generic';
+      const enc = kind === 'brush' ? serBrush : (x) => x;
+      entry[property] = {
+        type: kind, disabled: !!animation.disabled,
+        keyframes: animation.keyframes.map(k => ({
+          easing: typeof k.easing === 'string' ? k.easing : null,
+          offset: k.offset, value: enc(k.value)
+        }))
+      };
+    }
+    if (Object.keys(entry).length) out[el.id] = entry;
+  }
+  return out;
+}
+
+function desAnimations(doc, data) {
+  const index = new Map();
+  for (const el of walk(doc.children)) index.set(el.id, el);
+  for (const elementId in data) {
+    const el = index.get(elementId);
+    if (!el) continue;
+    for (const property in data[elementId]) {
+      const a = data[elementId][property];
+      const dec = a.type === 'brush' ? desBrush : (x) => x;
+      const keyframes = (a.keyframes || []).map(k => new Keyframe(dec(k.value), k.offset, k.easing || null));
+      el.animations[property] = new Animation(property, keyframes, a.disabled);
+    }
+  }
+}
+
+function serializeDocument(doc) {
+  return {
+    id: doc.id, title: doc.title,
+    guides: { guides: [] }, grid: null,
+    properties: {
+      size: { width: doc.width, height: doc.height },
+      /* extension propre à cet éditeur ; ignorée par l'importeur d'origine */
+      studio: { fps: doc.fps, background: doc.background }
+    },
+    animation: { startTime: doc.startTime, endTime: doc.endTime, mode: 0, animations: serAnimations(doc) },
+    children: doc.children.map(serElement)
+  };
+}
+
+function deserializeDocument(data) {
+  const a = data.animation || {};
+  const size = (data.properties && data.properties.size) || { width: 1280, height: 720 };
+  const studio = (data.properties && data.properties.studio) || {};
+  const doc = {
+    id: data.id || uid('doc'), title: data.title || 'Document',
+    width: size.width, height: size.height,
+    startTime: a.startTime || 0, endTime: a.endTime || 5000,
+    fps: studio.fps || 25, background: studio.background || '#ffffff',
+    children: (data.children || []).map(desElement)
+  };
+  relink(doc.children, null);
+  desAnimations(doc, a.animations || {});
+  return doc;
+}
+
+async function gzip(text) {
+  const stream = new Blob([text]).stream().pipeThrough(new CompressionStream('gzip'));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+async function gunzip(bytes) {
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+  return await new Response(stream).text();
+}
+
+async function writeEaf(doc) {
+  const manifest = await gzip(JSON.stringify({
+    type: 'expressive/animation', version: 100, documents: [doc.id], masterDocument: doc.id
+  }));
+  const body = await gzip(JSON.stringify(serializeDocument(doc)));
+
+  const head = new DataView(new ArrayBuffer(9));
+  head.setUint32(0, 0x65377865);
+  head.setUint8(4, 0x01);
+  head.setUint32(5, manifest.length);
+
+  const docHead = new DataView(new ArrayBuffer(5));
+  docHead.setUint8(0, 0x03);
+  docHead.setUint32(1, body.length);
+
+  return new Blob([head.buffer, manifest, docHead.buffer, body, new Uint8Array([0xef])],
+    { type: 'application/octet-stream' });
+}
+
+async function readEaf(arrayBuffer) {
+  const bytes = new Uint8Array(arrayBuffer);
+  const view = new DataView(arrayBuffer);
+  let offset = 0;
+  const need = (n) => { if (offset + n > bytes.length) throw new Error('Fichier .eaf tronqué ou invalide.'); };
+
+  need(4);
+  if (view.getUint32(offset) !== 0x65377865) throw new Error("Ce fichier n'est pas un projet Expressive (.eaf).");
+  offset += 4;
+  need(1);
+  if (view.getUint8(offset) !== 0x01) throw new Error('Manifeste absent.');
+  offset += 1;
+  need(4);
+  const mlen = view.getUint32(offset); offset += 4;
+  need(mlen);
+  const manifest = JSON.parse(await gunzip(bytes.subarray(offset, offset + mlen)));
+  offset += mlen;
+  if (manifest.type !== 'expressive/animation') throw new Error('Type de projet inattendu : ' + manifest.type);
+
+  const documents = [];
+  while (offset < bytes.length) {
+    const t = view.getUint8(offset);
+    if (t === 0xef) break;
+    if (t === 0x03) {
+      offset += 1;
+      need(4);
+      const len = view.getUint32(offset); offset += 4;
+      need(len);
+      documents.push(JSON.parse(await gunzip(bytes.subarray(offset, offset + len))));
+      offset += len;
+      continue;
+    }
+    offset += 1;
+  }
+  if (!documents.length) throw new Error('Aucun document dans le fichier.');
+  const master = documents.find(d => d.id === manifest.masterDocument) || documents[0];
+  return deserializeDocument(master);
+}
+
+/* Instantané pour l'historique (annuler / rétablir). */
+const snapshot = (doc) => JSON.stringify(serializeDocument(doc));
+const restore = (json) => deserializeDocument(JSON.parse(json));
+
+/* ============================ archive ZIP (stockée) ====================== */
+const CRC_TABLE = (function () {
+  const t = new Uint32Array(256);
+  for (let i = 0; i < 256; i++) {
+    let c = i;
+    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    t[i] = c >>> 0;
+  }
+  return t;
+})();
+function crc32(b) {
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < b.length; i++) c = CRC_TABLE[(c ^ b[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+function zipStore(files) {
+  const enc = new TextEncoder(), chunks = [], central = [];
+  let offset = 0;
+  for (const f of files) {
+    const name = enc.encode(f.name), data = f.data, crc = crc32(data);
+    const L = new DataView(new ArrayBuffer(30));
+    L.setUint32(0, 0x04034b50, true); L.setUint16(4, 20, true); L.setUint16(8, 0, true);
+    L.setUint32(14, crc, true); L.setUint32(18, data.length, true); L.setUint32(22, data.length, true);
+    L.setUint16(26, name.length, true);
+    chunks.push(L.buffer, name, data);
+    const C = new DataView(new ArrayBuffer(46));
+    C.setUint32(0, 0x02014b50, true); C.setUint16(4, 20, true); C.setUint16(6, 20, true);
+    C.setUint32(16, crc, true); C.setUint32(20, data.length, true); C.setUint32(24, data.length, true);
+    C.setUint16(28, name.length, true); C.setUint32(42, offset, true);
+    central.push({ h: C.buffer, n: name });
+    offset += 30 + name.length + data.length;
+  }
+  const start = offset;
+  let size = 0;
+  for (const c of central) { chunks.push(c.h, c.n); size += 46 + c.n.length; }
+  const E = new DataView(new ArrayBuffer(22));
+  E.setUint32(0, 0x06054b50, true); E.setUint16(8, files.length, true); E.setUint16(10, files.length, true);
+  E.setUint32(12, size, true); E.setUint32(16, start, true);
+  chunks.push(E.buffer);
+  return new Blob(chunks, { type: 'application/zip' });
+}
+
+function download(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
+/* ============================== état de l'application =================== */
+const app = {
+  doc: createDocument(),
+  time: 0,
+  selection: [],            // identifiants d'éléments
+  selectedKeyframes: [],    // { elementId, property, keyframeId }
+  tool: 'select',
+  view: { zoom: 1, x: 0, y: 0 },
+  recording: false,
+  playing: false,
+  loop: false,
+  grid: false,
+  gridSize: 20,
+  snap: true,
+  past: [],
+  future: [],
+  fileName: null,
+  timelineZoom: 100      // pixels par seconde
+};
+
+const stage = $('stage');
+const sctx = stage.getContext('2d');
+let needsRender = true;
+const invalidate = () => { needsRender = true; };
+
+const selectedElements = () => app.selection.map(id => findById(app.doc, id)).filter(Boolean);
+const firstSelected = () => selectedElements()[0] || null;
+
+/* --------------------------------------------------------- historique --- */
+function pushHistory() {
+  app.past.push(snapshot(app.doc));
+  if (app.past.length > 60) app.past.shift();
+  app.future.length = 0;
+  updateHistoryButtons();
+}
+function applyState(json) {
+  app.doc = restore(json);
+  hoverElement = null;
+  app.selection = app.selection.filter(id => findById(app.doc, id));
+  app.selectedKeyframes = [];
+  refreshAll();
+}
+function undo() {
+  if (!app.past.length) return;
+  app.future.push(snapshot(app.doc));
+  applyState(app.past.pop());
+  updateHistoryButtons();
+}
+function redo() {
+  if (!app.future.length) return;
+  app.past.push(snapshot(app.doc));
+  applyState(app.future.pop());
+  updateHistoryButtons();
+}
+function updateHistoryButtons() {
+  $('m-undo').disabled = !app.past.length;
+  $('m-redo').disabled = !app.future.length;
+}
+
+/* ------------------------------------------------ vue et coordonnées ---- */
+function resizeStage() {
+  const rect = stage.parentElement.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  stage.width = Math.max(1, Math.round(rect.width * dpr));
+  stage.height = Math.max(1, Math.round(rect.height * dpr));
+  stage.style.width = rect.width + 'px';
+  stage.style.height = rect.height + 'px';
+  stage._dpr = dpr;
+  stage._w = rect.width;
+  stage._h = rect.height;
+  invalidate();
+}
+
+function screenToScene(sx, sy) {
+  return { x: (sx - app.view.x) / app.view.zoom, y: (sy - app.view.y) / app.view.zoom };
+}
+function sceneToScreen(x, y) {
+  return { x: x * app.view.zoom + app.view.x, y: y * app.view.zoom + app.view.y };
+}
+function pointerScene(e) {
+  const r = stage.getBoundingClientRect();
+  return screenToScene(e.clientX - r.left, e.clientY - r.top);
+}
+function zoomTo(zoom, centerX, centerY) {
+  const z = clamp(zoom, 0.02, 32);
+  const cx = centerX == null ? stage._w / 2 : centerX;
+  const cy = centerY == null ? stage._h / 2 : centerY;
+  const before = screenToScene(cx, cy);
+  app.view.zoom = z;
+  app.view.x = cx - before.x * z;
+  app.view.y = cy - before.y * z;
+  $('hud-zoom').textContent = Math.round(z * 100) + ' %';
+  invalidate();
+}
+function fitView() {
+  const pad = 40;
+  const z = Math.min((stage._w - pad * 2) / app.doc.width, (stage._h - pad * 2) / app.doc.height);
+  app.view.zoom = clamp(z, 0.02, 32);
+  app.view.x = (stage._w - app.doc.width * app.view.zoom) / 2;
+  app.view.y = (stage._h - app.doc.height * app.view.zoom) / 2;
+  $('hud-zoom').textContent = Math.round(app.view.zoom * 100) + ' %';
+  invalidate();
+}
+
+/* ------------------------------------------ écriture d'une propriété ----
+   Reprend la logique de AnimationMiddleware.setElementProperty :
+   si la propriété est animée, ou si le mode enregistrement est actif,
+   la valeur est posée sur une clé au temps courant.                       */
+function setProperty(element, property, value) {
+  const animation = element.animations[property];
+  if (animation && !animation.disabled) {
+    animation.setValueAt(app.time, value);
+    element.props[property] = value;
+    return;
+  }
+  if (app.recording && PROPERTY_SPEC[property]) {
+    const created = new Animation(property, []);
+    if (app.time !== app.doc.startTime) {
+      created.setValueAt(app.doc.startTime, cloneValue(element.props[property]));
+    }
+    created.setValueAt(app.time, value);
+    element.animations[property] = created;
+    element.props[property] = value;
+    return;
+  }
+  element.props[property] = value;
+}
+
+/* Bascule d'animation sur une propriété (le « chronomètre » des panneaux). */
+function toggleAnimated(element, property) {
+  if (element.animations[property]) {
+    delete element.animations[property];
+  } else {
+    const a = new Animation(property, []);
+    a.setValueAt(app.time, cloneValue(element.props[property]));
+    element.animations[property] = a;
+  }
+}
+
+function addKeyframesAtCurrentTime() {
+  const els = selectedElements();
+  const targets = els.length ? els : Array.from(walk(app.doc.children));
+  let count = 0;
+  for (const el of targets) {
+    for (const property in el.animations) {
+      const a = el.animations[property];
+      const value = a.hasKeyframes ? cloneValue(a.getValueAtOffset(app.time)) : cloneValue(el.props[property]);
+      a.setValueAt(app.time, value);
+      count++;
+    }
+  }
+  return count;
+}
+
+/* ------------------------------------------------------- sélection ------ */
+function select(ids, additive) {
+  const list = Array.isArray(ids) ? ids : (ids ? [ids] : []);
+  if (additive) {
+    for (const id of list) {
+      const i = app.selection.indexOf(id);
+      if (i === -1) app.selection.push(id); else app.selection.splice(i, 1);
+    }
+  } else {
+    app.selection = list.slice();
+  }
+  refreshPanels();
+  invalidate();
+}
+
+/* ============================ dessin de la scène ======================== */
+const HANDLE_SIZE = 7;
+
+function handlePositions(element) {
+  const c = boxCorners(element, app.time).map(p => sceneToScreen(p.x, p.y));
+  const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+  return [
+    { id: 'nw', p: c[0] }, { id: 'n', p: mid(c[0], c[1]) }, { id: 'ne', p: c[1] },
+    { id: 'e', p: mid(c[1], c[2]) }, { id: 'se', p: c[2] }, { id: 's', p: mid(c[2], c[3]) },
+    { id: 'sw', p: c[3] }, { id: 'w', p: mid(c[3], c[0]) },
+    { id: 'rot', p: (function () {
+        const m = mid(c[0], c[1]);
+        const dx = m.x - (c[2].x + c[3].x) / 2, dy = m.y - (c[2].y + c[3].y) / 2;
+        const len = Math.hypot(dx, dy) || 1;
+        return { x: m.x + (dx / len) * 26, y: m.y + (dy / len) * 26 };
+      })() }
+  ];
+}
+
+function handleAt(screenPoint) {
+  const els = selectedElements();
+  if (els.length !== 1) return null;
+  for (const h of handlePositions(els[0])) {
+    if (Math.abs(screenPoint.x - h.p.x) <= HANDLE_SIZE && Math.abs(screenPoint.y - h.p.y) <= HANDLE_SIZE) return h.id;
+  }
+  return null;
+}
+
+let hoverElement = null;
+let marquee = null;
+
+function drawStage() {
+  const dpr = stage._dpr || 1;
+  sctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  sctx.clearRect(0, 0, stage._w, stage._h);
+
+  const css = getComputedStyle(document.documentElement);
+  sctx.fillStyle = css.getPropertyValue('--bg').trim() || '#1d1d1d';
+  sctx.fillRect(0, 0, stage._w, stage._h);
+
+  const z = app.view.zoom;
+  sctx.save();
+  sctx.translate(app.view.x, app.view.y);
+  sctx.scale(z, z);
+
+  // plan de travail
+  sctx.save();
+  sctx.shadowColor = 'rgba(0,0,0,.45)';
+  sctx.shadowBlur = 18 / z;
+  sctx.fillStyle = app.doc.background && app.doc.background !== 'transparent' ? app.doc.background : '#ffffff';
+  sctx.fillRect(0, 0, app.doc.width, app.doc.height);
+  sctx.restore();
+
+  sctx.save();
+  sctx.beginPath();
+  sctx.rect(0, 0, app.doc.width, app.doc.height);
+  sctx.clip();
+
+  if (app.grid) {
+    sctx.strokeStyle = 'rgba(128,128,128,.25)';
+    sctx.lineWidth = 1 / z;
+    sctx.beginPath();
+    for (let x = 0; x <= app.doc.width; x += app.gridSize) { sctx.moveTo(x, 0); sctx.lineTo(x, app.doc.height); }
+    for (let y = 0; y <= app.doc.height; y += app.gridSize) { sctx.moveTo(0, y); sctx.lineTo(app.doc.width, y); }
+    sctx.stroke();
+  }
+
+  sctx.globalAlpha = 1;
+  for (const el of app.doc.children) drawElement(sctx, el, app.time);
+  sctx.restore();
+
+  // contour du plan de travail
+  sctx.strokeStyle = 'rgba(128,128,128,.55)';
+  sctx.lineWidth = 1 / z;
+  sctx.strokeRect(0, 0, app.doc.width, app.doc.height);
+  sctx.restore();
+
+  drawOverlays();
+}
+
+function drawOverlays() {
+  const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#8f52f5';
+
+  if (hoverElement && app.selection.indexOf(hoverElement.id) === -1) {
+    const pts = boxCorners(hoverElement, app.time).map(p => sceneToScreen(p.x, p.y));
+    sctx.strokeStyle = accent;
+    sctx.lineWidth = 1;
+    sctx.setLineDash([]);
+    sctx.beginPath();
+    pts.forEach((p, i) => i ? sctx.lineTo(p.x, p.y) : sctx.moveTo(p.x, p.y));
+    sctx.closePath();
+    sctx.stroke();
+  }
+
+  const els = selectedElements();
+  for (const el of els) {
+    const pts = boxCorners(el, app.time).map(p => sceneToScreen(p.x, p.y));
+    sctx.strokeStyle = accent;
+    sctx.lineWidth = 1.5;
+    sctx.setLineDash([]);
+    sctx.beginPath();
+    pts.forEach((p, i) => i ? sctx.lineTo(p.x, p.y) : sctx.moveTo(p.x, p.y));
+    sctx.closePath();
+    sctx.stroke();
+  }
+
+  if (els.length === 1) {
+    const handles = handlePositions(els[0]);
+    for (const h of handles) {
+      sctx.beginPath();
+      if (h.id === 'rot') {
+        sctx.arc(h.p.x, h.p.y, HANDLE_SIZE - 1, 0, Math.PI * 2);
+      } else {
+        sctx.rect(h.p.x - HANDLE_SIZE / 2, h.p.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE);
+      }
+      sctx.fillStyle = '#fff';
+      sctx.strokeStyle = accent;
+      sctx.lineWidth = 1.5;
+      sctx.fill();
+      sctx.stroke();
+    }
+  }
+
+  if (marquee) {
+    sctx.strokeStyle = accent;
+    sctx.fillStyle = accent + '22';
+    sctx.lineWidth = 1;
+    sctx.setLineDash([4, 3]);
+    const a = sceneToScreen(marquee.x, marquee.y);
+    const b = sceneToScreen(marquee.x + marquee.w, marquee.y + marquee.h);
+    sctx.fillRect(a.x, a.y, b.x - a.x, b.y - a.y);
+    sctx.strokeRect(a.x, a.y, b.x - a.x, b.y - a.y);
+    sctx.setLineDash([]);
+  }
+}
+
+function renderLoop() {
+  if (needsRender) { needsRender = false; drawStage(); }
+  requestAnimationFrame(renderLoop);
+}
+
+/* ================================ outils ================================ */
+const TOOLS = [
+  { id: 'select', key: 'V', label: 'Sélection (V)', icon: 'M5 3l13 8-5.5 1.3L15 18l-2.2 1-2.6-5.6L6 17z' },
+  { id: 'pan', key: 'H', label: 'Main (H)', icon: 'M8 12V5.5a1.5 1.5 0 013 0V11m0-1V4.5a1.5 1.5 0 013 0V11m0-1.5a1.5 1.5 0 013 0V15a5 5 0 01-5 5h-2a5 5 0 01-5-5v-3a1.5 1.5 0 013 0' },
+  { id: 'rect', key: 'R', label: 'Rectangle (R)', icon: 'M4 5h16v14H4z' },
+  { id: 'ellipse', key: 'E', label: 'Ellipse (E)', icon: 'M12 5a7 7 0 100 14 7 7 0 000-14z' },
+  { id: 'star', key: 'S', label: 'Étoile (S)', icon: 'M12 3.5l2.6 5.5 6 .8-4.4 4.2 1.1 6-5.3-2.9-5.3 2.9 1.1-6L3.4 9.8l6-.8z' },
+  { id: 'regular-polygon', key: 'P', label: 'Polygone (P)', icon: 'M12 3.5l7.5 4.4v8.2L12 20.5 4.5 16.1V7.9z' },
+  { id: 'text', key: 'T', label: 'Texte (T)', icon: 'M5 6V4h14v2M12 4v16M9 20h6' },
+  { id: 'zoom', key: 'Z', label: 'Zoom (Z)', icon: 'M11 4a7 7 0 100 14 7 7 0 000-14zM20 20l-4.2-4.2' }
+];
+
+function buildToolbar() {
+  const bar = $('toolbar');
+  bar.textContent = '';
+  for (const t of TOOLS) {
+    const b = document.createElement('button');
+    b.className = 'tool' + (app.tool === t.id ? ' on' : '');
+    b.title = t.label;
+    b.dataset.tool = t.id;
+    b.innerHTML = '<svg viewBox="0 0 24 24"><path d="' + t.icon + '"/></svg>';
+    b.addEventListener('click', () => setTool(t.id));
+    bar.appendChild(b);
+  }
+}
+function setTool(id) {
+  app.tool = id;
+  for (const b of $('toolbar').children) b.classList.toggle('on', b.dataset.tool === id);
+  stage.style.cursor = id === 'pan' ? 'grab' : (id === 'select' ? 'default' : 'crosshair');
+}
+
+const SHAPE_TOOLS = { rect: 1, ellipse: 1, star: 1, 'regular-polygon': 1 };
+const snapValue = (v) => (app.grid && app.snap ? Math.round(v / app.gridSize) * app.gridSize : v);
+
+let drag = null;
+let spaceDown = false;
+
+function addElementToDocument(el) {
+  el.parent = null;
+  app.doc.children.push(el);
+  return el;
+}
+
+stage.addEventListener('pointerdown', (e) => {
+  stage.setPointerCapture(e.pointerId);
+  const rect = stage.getBoundingClientRect();
+  const screen = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  const scene = screenToScene(screen.x, screen.y);
+  stopPlayback();
+
+  if (e.button === 1 || spaceDown || app.tool === 'pan') {
+    drag = { mode: 'pan', sx: screen.x, sy: screen.y, vx: app.view.x, vy: app.view.y };
+    stage.style.cursor = 'grabbing';
+    return;
+  }
+  if (app.tool === 'zoom') {
+    zoomTo(app.view.zoom * (e.altKey ? 1 / 1.4 : 1.4), screen.x, screen.y);
+    return;
+  }
+  if (app.tool === 'text') {
+    pushHistory();
+    const el = createElement('text', {
+      position: { x: snapValue(scene.x), y: snapValue(scene.y) },
+      fill: { kind: 'solid', color: parseColor('#222222') }
+    });
+    addElementToDocument(el);
+    setTool('select');
+    select([el.id]);
+    refreshAll();
+    setTimeout(() => { const f = document.querySelector('[data-prop-input="text"]'); if (f) { f.focus(); f.select(); } }, 30);
+    return;
+  }
+  if (SHAPE_TOOLS[app.tool]) {
+    drag = { mode: 'create', type: app.tool, start: scene, element: null };
+    return;
+  }
+
+  // outil sélection
+  const handle = handleAt(screen);
+  if (handle) {
+    const el = firstSelected();
+    pushHistory();
+    const b = localBounds(el, app.time);
+    const center = elementCenter(el);
+    let inverse = null;
+    try { inverse = worldMatrix(el, app.time).inverse(); } catch (err) { inverse = new DOMMatrix(); }
+    drag = {
+      mode: handle === 'rot' ? 'rotate' : 'resize',
+      handle: handle, element: el,
+      startBox: b,
+      startProps: cloneValue(el.props),
+      /* Matrice et centre figés au début du glissement : les recalculer à chaque
+         mouvement ferait diverger la taille, puisque l'ancrage suit la taille. */
+      inverse: inverse,
+      center: center,
+      startAngle: Math.atan2(scene.y - center.y, scene.x - center.x) / DEG,
+      startRotate: propertyValue(el, 'rotate', app.time) || 0
+    };
+    return;
+  }
+
+  const picked = pickElement(app.doc, scene, app.time);
+  if (picked) {
+    if (e.shiftKey) select([picked.id], true);
+    else if (app.selection.indexOf(picked.id) === -1) select([picked.id]);
+    const els = selectedElements();
+    if (els.length) {
+      pushHistory();
+      drag = {
+        mode: 'move', start: scene, moved: false,
+        items: els.map(el => ({ el: el, pos: cloneValue(propertyValue(el, 'position', app.time)) }))
+      };
+    }
+  } else {
+    if (!e.shiftKey) select([]);
+    drag = { mode: 'marquee', start: scene };
+  }
+});
+
+function elementCenter(el) {
+  const c = boxCorners(el, app.time);
+  return { x: (c[0].x + c[2].x) / 2, y: (c[0].y + c[2].y) / 2 };
+}
+
+stage.addEventListener('pointermove', (e) => {
+  const rect = stage.getBoundingClientRect();
+  const screen = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  const scene = screenToScene(screen.x, screen.y);
+  $('hud-pos').textContent = Math.round(scene.x) + ', ' + Math.round(scene.y);
+
+  if (!drag) {
+    if (app.tool === 'select') {
+      const previous = hoverElement;
+      hoverElement = pickElement(app.doc, scene, app.time);
+      if (previous !== hoverElement) invalidate();
+      const h = handleAt(screen);
+      stage.style.cursor = h ? (h === 'rot' ? 'grab' : 'nwse-resize') : (hoverElement ? 'move' : 'default');
+    }
+    return;
+  }
+
+  if (drag.mode === 'pan') {
+    app.view.x = drag.vx + (screen.x - drag.sx);
+    app.view.y = drag.vy + (screen.y - drag.sy);
+    invalidate();
+    return;
+  }
+
+  if (drag.mode === 'create') {
+    const dx = scene.x - drag.start.x, dy = scene.y - drag.start.y;
+    if (!drag.element) {
+      if (Math.abs(dx) < 2 && Math.abs(dy) < 2) return;
+      pushHistory();
+      drag.element = addElementToDocument(createElement(drag.type));
+      select([drag.element.id]);
+    }
+    const el = drag.element;
+    if (drag.type === 'rect' || drag.type === 'ellipse') {
+      let w = Math.abs(dx), h = Math.abs(dy);
+      if (e.shiftKey) { w = h = Math.max(w, h); }
+      w = Math.max(1, snapValue(w)); h = Math.max(1, snapValue(h));
+      el.props.width = w;
+      el.props.height = h;
+      el.props.anchor = { x: w / 2, y: h / 2 };
+      el.props.position = {
+        x: drag.start.x + (dx < 0 ? -w / 2 : w / 2),
+        y: drag.start.y + (dy < 0 ? -h / 2 : h / 2)
+      };
+    } else {
+      const r = Math.max(2, Math.hypot(dx, dy));
+      el.props.position = { x: drag.start.x, y: drag.start.y };
+      el.props.anchor = { x: 0, y: 0 };
+      if (drag.type === 'star') { el.props.outerRadius = r; el.props.innerRadius = r * 0.45; }
+      else el.props.radius = r;
+    }
+    refreshPanels();
+    invalidate();
+    return;
+  }
+
+  if (drag.mode === 'move') {
+    let dx = scene.x - drag.start.x, dy = scene.y - drag.start.y;
+    if (e.shiftKey) { if (Math.abs(dx) > Math.abs(dy)) dy = 0; else dx = 0; }
+    for (const item of drag.items) {
+      let vx = dx, vy = dy;
+      if (item.el.parent) {
+        try {
+          const inv = worldMatrix(item.el.parent, app.time).inverse();
+          const o = inv.transformPoint({ x: 0, y: 0 });
+          const p = inv.transformPoint({ x: dx, y: dy });
+          vx = p.x - o.x; vy = p.y - o.y;
+        } catch (err) { /* matrice non inversible : on garde le delta brut */ }
+      }
+      setProperty(item.el, 'position', { x: snapValue(item.pos.x + vx), y: snapValue(item.pos.y + vy) });
+    }
+    drag.moved = true;
+    refreshPanels();
+    invalidate();
+    return;
+  }
+
+  if (drag.mode === 'rotate') {
+    const c = drag.center;
+    const angle = Math.atan2(scene.y - c.y, scene.x - c.x) / DEG;
+    let value = drag.startRotate + (angle - drag.startAngle);
+    if (e.shiftKey) value = Math.round(value / 15) * 15;
+    setProperty(drag.element, 'rotate', Math.round(value * 10) / 10);
+    refreshPanels();
+    invalidate();
+    return;
+  }
+
+  if (drag.mode === 'resize') {
+    const el = drag.element;
+    const local = drag.inverse.transformPoint(scene);
+    const b = drag.startBox;
+    const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+    const h = drag.handle;
+    let dx = Math.abs(local.x - cx), dy = Math.abs(local.y - cy);
+    const horizontal = /e|w/.test(h), vertical = /n|s/.test(h);
+    let w = horizontal ? Math.max(1, dx * 2) : b.w;
+    let hh = vertical ? Math.max(1, dy * 2) : b.h;
+    if (e.shiftKey && b.w && b.h) {
+      const ratio = Math.max(w / b.w, hh / b.h);
+      w = b.w * ratio; hh = b.h * ratio;
+    }
+    if (el.type === 'rect' || el.type === 'ellipse') {
+      setProperty(el, 'width', Math.round(w));
+      setProperty(el, 'height', Math.round(hh));
+      if (!el.animations.anchor) el.props.anchor = { x: w / 2, y: hh / 2 };
+    } else if (el.type === 'star') {
+      const r = Math.max(dx, dy);
+      const ratio = drag.startProps.outerRadius ? r / drag.startProps.outerRadius : 1;
+      setProperty(el, 'outerRadius', Math.round(r));
+      setProperty(el, 'innerRadius', Math.round((drag.startProps.innerRadius || r * 0.45) * ratio));
+    } else if (el.type === 'regular-polygon') {
+      setProperty(el, 'radius', Math.round(Math.max(dx, dy)));
+    } else if (el.type === 'text') {
+      const ratio = b.h ? hh / b.h : 1;
+      setProperty(el, 'fontSize', Math.max(4, Math.round((drag.startProps.fontSize || 48) * ratio)));
+    } else {
+      const s = drag.startProps.scale || { x: 1, y: 1 };
+      setProperty(el, 'scale', {
+        x: b.w ? round3(s.x * (w / b.w)) : s.x,
+        y: b.h ? round3(s.y * (hh / b.h)) : s.y
+      });
+    }
+    refreshPanels();
+    invalidate();
+    return;
+  }
+
+  if (drag.mode === 'marquee') {
+    marquee = {
+      x: Math.min(drag.start.x, scene.x), y: Math.min(drag.start.y, scene.y),
+      w: Math.abs(scene.x - drag.start.x), h: Math.abs(scene.y - drag.start.y)
+    };
+    invalidate();
+  }
+});
+
+function endDrag(e) {
+  if (!drag) return;
+  if (drag.mode === 'marquee' && marquee) {
+    const hits = [];
+    for (const el of app.doc.children) {
+      if (el.hidden || el.locked) continue;
+      const b = worldBounds(el, app.time);
+      const overlap = !(b.x > marquee.x + marquee.w || b.x + b.w < marquee.x ||
+                        b.y > marquee.y + marquee.h || b.y + b.h < marquee.y);
+      if (overlap) hits.push(el.id);
+    }
+    select(hits, e && e.shiftKey);
+    marquee = null;
+  }
+  if (drag.mode === 'create' && !drag.element) {
+    // simple clic avec un outil de forme : on crée une forme de taille par défaut
+    pushHistory();
+    const el = createElement(drag.type);
+    const b = localBounds(el, 0);
+    el.props.position = { x: snapValue(drag.start.x), y: snapValue(drag.start.y) };
+    if (drag.type === 'rect' || drag.type === 'ellipse') el.props.anchor = { x: b.w / 2, y: b.h / 2 };
+    addElementToDocument(el);
+    select([el.id]);
+  }
+  if (drag.mode === 'create' && drag.element) setTool('select');
+  drag = null;
+  stage.style.cursor = app.tool === 'pan' ? 'grab' : 'default';
+  refreshAll();
+}
+stage.addEventListener('pointerup', endDrag);
+stage.addEventListener('pointercancel', endDrag);
+
+stage.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const rect = stage.getBoundingClientRect();
+  const factor = Math.pow(0.999, e.deltaY);
+  zoomTo(app.view.zoom * factor, e.clientX - rect.left, e.clientY - rect.top);
+}, { passive: false });
+
+stage.addEventListener('dblclick', () => {
+  const el = firstSelected();
+  if (el && el.type === 'text') {
+    const f = document.querySelector('[data-prop-input="text"]');
+    if (f) { showTab('props'); f.focus(); f.select(); }
+  }
+});
+
+/* ======================= panneau des propriétés ========================= */
+let propsSignature = '';
+
+function fieldRow(label, controls, element, property) {
+  const row = document.createElement('div');
+  row.className = 'field';
+  const l = document.createElement('label');
+  l.textContent = label;
+  row.appendChild(l);
+  const pair = document.createElement('div');
+  pair.className = 'pair';
+  controls.forEach(c => pair.appendChild(c));
+  row.appendChild(pair);
+  if (element && property) {
+    const b = document.createElement('button');
+    b.className = 'kfbtn';
+    b.title = 'Animer « ' + propertyLabel(property) + ' »';
+    b.dataset.kfProp = property;
+    b.innerHTML = '<i></i>';
+    b.addEventListener('click', () => {
+      pushHistory();
+      toggleAnimated(element, property);
+      refreshAll();
+    });
+    row.appendChild(b);
+  } else {
+    const spacer = document.createElement('span');
+    spacer.style.cssText = 'flex:0 0 22px';
+    row.appendChild(spacer);
+  }
+  return row;
+}
+
+function numberInput(element, property, opts) {
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.step = (opts && opts.step) || 1;
+  if (opts && opts.min != null) input.min = opts.min;
+  if (opts && opts.max != null) input.max = opts.max;
+  input.dataset.propInput = property + (opts && opts.axis ? '.' + opts.axis : '');
+  input.addEventListener('focus', () => { input._before = snapshot(app.doc); });
+  const commit = (final) => {
+    const raw = parseFloat(input.value);
+    if (isNaN(raw)) return;
+    const value = opts && opts.scale ? raw * opts.scale : raw;
+    if (opts && opts.axis) {
+      const current = cloneValue(propertyValue(element, property, app.time)) || { x: 0, y: 0 };
+      current[opts.axis] = value;
+      setProperty(element, property, current);
+    } else {
+      setProperty(element, property, value);
+    }
+    if (final && input._before) { app.past.push(input._before); app.future.length = 0; input._before = null; updateHistoryButtons(); }
+    invalidate();
+    refreshTimeline();
+  };
+  input.addEventListener('input', () => commit(false));
+  input.addEventListener('change', () => commit(true));
+  return input;
+}
+
+function colorInput(element, property) {
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex; gap:5px; flex:1; min-width:0; align-items:center';
+  const picker = document.createElement('input');
+  picker.type = 'color';
+  picker.dataset.propInput = property + '.color';
+  const alpha = document.createElement('input');
+  alpha.type = 'number';
+  alpha.min = 0; alpha.max = 100; alpha.step = 1;
+  alpha.title = 'Opacité de la couleur (%)';
+  alpha.dataset.propInput = property + '.alpha';
+  const none = document.createElement('button');
+  none.textContent = '∅';
+  none.title = 'Aucun';
+  none.style.cssText = 'flex:0 0 26px; padding:4px 0';
+
+  const apply = (brush, final) => {
+    if (final) pushHistory();
+    setProperty(element, property, brush);
+    invalidate();
+    refreshTimeline();
+    if (final) refreshPanels();
+  };
+  picker.addEventListener('input', () => {
+    const current = propertyValue(element, property, app.time);
+    const a = current && current.kind === 'solid' ? current.color.a : 1;
+    apply({ kind: 'solid', color: Object.assign(parseColor(picker.value), { a: a }) }, false);
+  });
+  picker.addEventListener('change', () => {
+    const current = propertyValue(element, property, app.time);
+    const a = current && current.kind === 'solid' ? current.color.a : 1;
+    apply({ kind: 'solid', color: Object.assign(parseColor(picker.value), { a: a }) }, true);
+  });
+  alpha.addEventListener('change', () => {
+    const current = propertyValue(element, property, app.time);
+    const base = current && current.kind === 'solid' ? cloneValue(current.color) : parseColor('#888888');
+    base.a = clamp(parseFloat(alpha.value) / 100, 0, 1);
+    apply({ kind: 'solid', color: base }, true);
+  });
+  none.addEventListener('click', () => apply(null, true));
+  wrap.appendChild(picker); wrap.appendChild(alpha); wrap.appendChild(none);
+  return wrap;
+}
+
+function textInput(element, property) {
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.dataset.propInput = property;
+  input.addEventListener('focus', () => { input._before = snapshot(app.doc); });
+  input.addEventListener('input', () => { setProperty(element, property, input.value); invalidate(); });
+  input.addEventListener('change', () => {
+    if (input._before) { app.past.push(input._before); app.future.length = 0; input._before = null; updateHistoryButtons(); }
+    refreshTimeline();
+  });
+  return input;
+}
+
+function selectInput(element, property, options) {
+  const sel = document.createElement('select');
+  sel.dataset.propInput = property;
+  for (const o of options) {
+    const opt = document.createElement('option');
+    opt.value = o[0]; opt.textContent = o[1];
+    sel.appendChild(opt);
+  }
+  sel.addEventListener('change', () => {
+    pushHistory();
+    const v = isNaN(parseFloat(sel.value)) ? sel.value : parseFloat(sel.value);
+    setProperty(element, property, v);
+    invalidate(); refreshTimeline();
+  });
+  return sel;
+}
+
+function groupBox(title) {
+  const g = document.createElement('div');
+  g.className = 'group';
+  const h = document.createElement('h3');
+  h.textContent = title;
+  g.appendChild(h);
+  return g;
+}
+
+function buildDocumentPanel(pane) {
+  const g = groupBox('Document');
+  const name = document.createElement('input');
+  name.type = 'text';
+  name.value = app.doc.title;
+  name.addEventListener('change', () => { pushHistory(); app.doc.title = name.value; });
+  g.appendChild(fieldRow('Nom', [name]));
+
+  const mk = (value, apply, min) => {
+    const i = document.createElement('input');
+    i.type = 'number'; i.value = value; if (min != null) i.min = min;
+    i.addEventListener('change', () => { pushHistory(); apply(parseFloat(i.value)); refreshAll(); });
+    return i;
+  };
+  g.appendChild(fieldRow('Taille', [
+    mk(app.doc.width, v => app.doc.width = Math.max(1, Math.round(v)), 1),
+    mk(app.doc.height, v => app.doc.height = Math.max(1, Math.round(v)), 1)
+  ]));
+  g.appendChild(fieldRow('Durée (s)', [mk(round3(app.doc.endTime / 1000), v => {
+    app.doc.endTime = Math.max(100, Math.round(v * 1000));
+    app.time = clamp(app.time, 0, app.doc.endTime);
+  }, 0.1)]));
+  g.appendChild(fieldRow('Images/s', [mk(app.doc.fps, v => app.doc.fps = clamp(Math.round(v), 1, 120), 1)]));
+
+  const bg = document.createElement('input');
+  bg.type = 'color';
+  bg.value = app.doc.background === 'transparent' ? '#ffffff' : app.doc.background;
+  bg.addEventListener('change', () => { pushHistory(); app.doc.background = bg.value; invalidate(); });
+  const transparent = document.createElement('button');
+  transparent.textContent = 'Transparent';
+  transparent.addEventListener('click', () => { pushHistory(); app.doc.background = 'transparent'; invalidate(); });
+  g.appendChild(fieldRow('Fond', [bg, transparent]));
+  pane.appendChild(g);
+
+  const tip = document.createElement('div');
+  tip.className = 'hint';
+  tip.innerHTML = 'Sélectionnez un élément pour voir ses propriétés.<br>' +
+    'Le bouton losange à droite d’une propriété la rend animable.';
+  pane.appendChild(tip);
+}
+
+function buildElementPanel(pane, el) {
+  const g1 = groupBox('Élément — ' + (TYPE_LABEL[el.type] || el.type));
+  const name = document.createElement('input');
+  name.type = 'text';
+  name.value = el.title;
+  name.addEventListener('change', () => { pushHistory(); el.title = name.value; refreshLayers(); refreshTimeline(); });
+  g1.appendChild(fieldRow('Nom', [name]));
+  g1.appendChild(fieldRow('Position', [
+    numberInput(el, 'position', { axis: 'x' }), numberInput(el, 'position', { axis: 'y' })
+  ], el, 'position'));
+  g1.appendChild(fieldRow('Ancrage', [
+    numberInput(el, 'anchor', { axis: 'x' }), numberInput(el, 'anchor', { axis: 'y' })
+  ], el, 'anchor'));
+  g1.appendChild(fieldRow('Échelle', [
+    numberInput(el, 'scale', { axis: 'x', step: 0.01 }), numberInput(el, 'scale', { axis: 'y', step: 0.01 })
+  ], el, 'scale'));
+  g1.appendChild(fieldRow('Rotation', [numberInput(el, 'rotate', { step: 1 })], el, 'rotate'));
+  g1.appendChild(fieldRow('Inclinaison', [
+    numberInput(el, 'skewAngle', { step: 1 }), numberInput(el, 'skewAxis', { step: 1 })
+  ], el, 'skewAngle'));
+  g1.appendChild(fieldRow('Opacité %', [numberInput(el, 'opacity', { min: 0, max: 100, scale: 0.01 })], el, 'opacity'));
+  pane.appendChild(g1);
+
+  if (el.type !== 'group') {
+    const g2 = groupBox('Apparence');
+    g2.appendChild(fieldRow('Fond', [colorInput(el, 'fill')], el, 'fill'));
+    g2.appendChild(fieldRow('Contour', [colorInput(el, 'strokeBrush')], el, 'strokeBrush'));
+    g2.appendChild(fieldRow('Épaisseur', [numberInput(el, 'strokeLineWidth', { min: 0 })], el, 'strokeLineWidth'));
+    pane.appendChild(g2);
+  }
+
+  const g3 = groupBox('Forme');
+  let any = false;
+  if (el.type === 'rect' || el.type === 'ellipse') {
+    g3.appendChild(fieldRow('Largeur', [numberInput(el, 'width', { min: 1 })], el, 'width'));
+    g3.appendChild(fieldRow('Hauteur', [numberInput(el, 'height', { min: 1 })], el, 'height'));
+    any = true;
+  }
+  if (el.type === 'rect') {
+    const rx = document.createElement('input');
+    rx.type = 'number'; rx.min = 0; rx.dataset.propInput = 'radius.rx';
+    rx.addEventListener('change', () => {
+      pushHistory();
+      const v = Math.max(0, parseFloat(rx.value) || 0);
+      setProperty(el, 'radius', { rx: v, ry: v, multiple: true });
+      invalidate(); refreshTimeline();
+    });
+    g3.appendChild(fieldRow('Coins', [rx], el, 'radius'));
+    any = true;
+  }
+  if (el.type === 'regular-polygon') {
+    g3.appendChild(fieldRow('Côtés', [numberInput(el, 'sides', { min: 3 })], el, 'sides'));
+    g3.appendChild(fieldRow('Rayon', [numberInput(el, 'radius', { min: 1 })], el, 'radius'));
+    g3.appendChild(fieldRow('Angle', [numberInput(el, 'angle')], el, 'angle'));
+    any = true;
+  }
+  if (el.type === 'star') {
+    g3.appendChild(fieldRow('Branches', [numberInput(el, 'sides', { min: 3 })], el, 'sides'));
+    g3.appendChild(fieldRow('Rayon ext.', [numberInput(el, 'outerRadius', { min: 1 })], el, 'outerRadius'));
+    g3.appendChild(fieldRow('Rayon int.', [numberInput(el, 'innerRadius', { min: 0 })], el, 'innerRadius'));
+    g3.appendChild(fieldRow('Angle', [numberInput(el, 'angle')], el, 'angle'));
+    any = true;
+  }
+  if (el.type === 'text') {
+    g3.appendChild(fieldRow('Texte', [textInput(el, 'text')], el, 'text'));
+    g3.appendChild(fieldRow('Police', [selectInput(el, 'fontFamily', [
+      ['Arial, Helvetica, sans-serif', 'Arial'],
+      ['Georgia, serif', 'Georgia'],
+      ['"Times New Roman", serif', 'Times'],
+      ['Verdana, sans-serif', 'Verdana'],
+      ['"Courier New", monospace', 'Courier'],
+      ['system-ui, sans-serif', 'Système']
+    ])]));
+    g3.appendChild(fieldRow('Corps', [numberInput(el, 'fontSize', { min: 4 })], el, 'fontSize'));
+    g3.appendChild(fieldRow('Graisse', [selectInput(el, 'fontWeight', [
+      [300, 'Léger'], [400, 'Normal'], [600, 'Demi-gras'], [700, 'Gras'], [900, 'Noir']
+    ])]));
+    g3.appendChild(fieldRow('Alignement', [selectInput(el, 'align', [
+      ['left', 'Gauche'], ['center', 'Centré'], ['right', 'Droite']
+    ])]));
+    any = true;
+  }
+  if (any) pane.appendChild(g3);
+}
+
+function refreshPanels() {
+  const pane = $('pane-props');
+  const els = selectedElements();
+  const signature = els.length === 1 ? els[0].id + ':' + els[0].type
+    : (els.length ? 'multi:' + els.length : 'doc:' + app.doc.id);
+
+  if (signature !== propsSignature) {
+    propsSignature = signature;
+    pane.textContent = '';
+    if (els.length === 1) buildElementPanel(pane, els[0]);
+    else if (els.length > 1) {
+      const g = groupBox('Sélection multiple');
+      const info = document.createElement('div');
+      info.className = 'hint';
+      info.textContent = els.length + ' éléments sélectionnés. Déplacez-les sur le plan de travail, ou sélectionnez-en un seul pour modifier ses propriétés.';
+      g.appendChild(info);
+      pane.appendChild(g);
+    } else buildDocumentPanel(pane);
+  }
+  syncPanelValues();
+}
+
+/* Met à jour les valeurs affichées sans reconstruire les champs. */
+function syncPanelValues() {
+  const el = selectedElements().length === 1 ? firstSelected() : null;
+  if (!el) return;
+  const s = stateAt(el, app.time);
+  for (const input of $('pane-props').querySelectorAll('[data-prop-input]')) {
+    if (input === document.activeElement) continue;
+    const spec = input.dataset.propInput.split('.');
+    const property = spec[0], part = spec[1];
+    let value = s[property];
+    if (value === undefined) continue;
+    if (part === 'x' || part === 'y') input.value = round3(value[part]);
+    else if (part === 'color') input.value = value && value.kind === 'solid' ? colorToHex(value.color) : '#000000';
+    else if (part === 'alpha') input.value = Math.round((value && value.kind === 'solid' ? (value.color.a == null ? 1 : value.color.a) : 0) * 100);
+    else if (part === 'rx') input.value = value ? round3(value.rx) : 0;
+    else if (property === 'opacity') input.value = Math.round(value * 100);
+    else input.value = typeof value === 'number' ? round3(value) : value;
+  }
+  for (const b of $('pane-props').querySelectorAll('[data-kf-prop]')) {
+    b.classList.toggle('on', !!el.animations[b.dataset.kfProp]);
+  }
+}
+
+/* ============================ arbre des calques ========================= */
+function refreshLayers() {
+  const box = $('layer-list');
+  box.textContent = '';
+  const rows = [];
+  const build = (list, depth) => {
+    for (let i = list.length - 1; i >= 0; i--) rows.push({ el: list[i], depth: depth });
+    for (let i = list.length - 1; i >= 0; i--) {
+      if (list[i].children && list[i].children.length) build(list[i].children, depth + 1);
+    }
+  };
+  build(app.doc.children, 0);
+
+  for (const row of rows) {
+    const el = row.el;
+    const d = document.createElement('div');
+    d.className = 'layer' + (app.selection.indexOf(el.id) !== -1 ? ' sel' : '');
+    d.style.paddingLeft = (8 + row.depth * 13) + 'px';
+    d.dataset.layerId = el.id;
+
+    const eye = document.createElement('button');
+    eye.textContent = el.hidden ? '○' : '●';
+    eye.title = el.hidden ? 'Afficher' : 'Masquer';
+    eye.addEventListener('click', (e) => { e.stopPropagation(); pushHistory(); el.hidden = !el.hidden; refreshAll(); });
+
+    const lock = document.createElement('button');
+    lock.textContent = el.locked ? '🔒' : '🔓';
+    lock.title = el.locked ? 'Déverrouiller' : 'Verrouiller';
+    lock.addEventListener('click', (e) => { e.stopPropagation(); pushHistory(); el.locked = !el.locked; refreshLayers(); });
+
+    const icon = document.createElement('span');
+    icon.className = 'ic';
+    icon.textContent = ({ rect: '▭', ellipse: '◯', star: '★', 'regular-polygon': '⬟', text: 'T', group: '▣', poly: '⋯', path: '✎' })[el.type] || '•';
+
+    const nm = document.createElement('span');
+    nm.className = 'nm';
+    nm.textContent = el.title;
+    nm.title = 'Double-clic pour renommer';
+    nm.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      const input = document.createElement('input');
+      input.type = 'text'; input.value = el.title;
+      nm.textContent = ''; nm.appendChild(input); input.focus(); input.select();
+      const done = () => { pushHistory(); el.title = input.value || el.title; refreshAll(); };
+      input.addEventListener('blur', done);
+      input.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); input.blur(); } });
+    });
+
+    const anim = document.createElement('span');
+    anim.className = 'ic';
+    anim.textContent = Object.keys(el.animations).length ? '◆' : '';
+    anim.style.color = 'var(--kf)';
+    anim.title = Object.keys(el.animations).length + ' propriété(s) animée(s)';
+
+    const up = document.createElement('button');
+    up.textContent = '▲'; up.title = 'Monter';
+    up.addEventListener('click', (e) => { e.stopPropagation(); reorder(el, +1); });
+    const down = document.createElement('button');
+    down.textContent = '▼'; down.title = 'Descendre';
+    down.addEventListener('click', (e) => { e.stopPropagation(); reorder(el, -1); });
+
+    d.append(eye, lock, icon, nm, anim, up, down);
+    d.addEventListener('pointerdown', (e) => select([el.id], e.shiftKey));
+    box.appendChild(d);
+  }
+  if (!rows.length) {
+    const empty = document.createElement('div');
+    empty.className = 'hint';
+    empty.textContent = 'Aucun élément. Choisissez un outil de forme et dessinez sur le plan de travail.';
+    box.appendChild(empty);
+  }
+}
+
+function reorder(el, direction) {
+  const list = siblingsOf(app.doc, el);
+  const i = list.indexOf(el);
+  const j = i + direction;
+  if (i === -1 || j < 0 || j >= list.length) return;
+  pushHistory();
+  list.splice(i, 1);
+  list.splice(j, 0, el);
+  refreshAll();
+}
+
+/* ============================ frise chronologique ======================= */
+const pxPerMs = () => app.timelineZoom / 1000;
+const timeToX = (ms) => ms * pxPerMs();
+const xToTime = (x) => x / pxPerMs();
+const frameMs = () => 1000 / (app.doc.fps || 25);
+const snapToFrame = (ms) => Math.round(ms / frameMs()) * frameMs();
+
+function keyframeKey(elementId, property, keyframeId) { return elementId + '|' + property + '|' + keyframeId; }
+function isKeyframeSelected(elementId, property, keyframeId) {
+  return app.selectedKeyframes.some(k => k.elementId === elementId && k.property === property && k.keyframeId === keyframeId);
+}
+
+function timelineRows() {
+  const rows = [];
+  for (const el of walk(app.doc.children)) {
+    const properties = Object.keys(el.animations);
+    const selected = app.selection.indexOf(el.id) !== -1;
+    if (!properties.length && !selected) continue;
+    rows.push({ kind: 'element', el: el });
+    for (const property of properties) rows.push({ kind: 'property', el: el, property: property });
+  }
+  return rows;
+}
+
+function refreshTimeline() {
+  const names = $('tl-names');
+  const rowsBox = $('tl-rows');
+  names.textContent = '';
+  const head = document.createElement('div');
+  head.className = 'head';
+  names.appendChild(head);
+  rowsBox.textContent = '';
+
+  const rows = timelineRows();
+  const width = Math.max(200, timeToX(app.doc.endTime) + 60);
+
+  for (const row of rows) {
+    const nameRow = document.createElement('div');
+    nameRow.className = 'tl-row ' + (row.kind === 'element' ? 'el' : 'prop') +
+      (row.kind === 'element' && app.selection.indexOf(row.el.id) !== -1 ? ' sel' : '');
+    if (row.kind === 'element') {
+      nameRow.textContent = row.el.title;
+      nameRow.style.cursor = 'pointer';
+      nameRow.addEventListener('pointerdown', (e) => select([row.el.id], e.shiftKey));
+    } else {
+      nameRow.textContent = propertyLabel(row.property);
+    }
+    names.appendChild(nameRow);
+
+    const track = document.createElement('div');
+    track.className = 'track' + (row.kind === 'element' ? ' el' : '');
+    track.style.width = width + 'px';
+
+    if (row.kind === 'property') {
+      const animation = row.el.animations[row.property];
+      const kfs = animation.keyframes;
+      for (let i = 0; i < kfs.length - 1; i++) {
+        const seg = document.createElement('div');
+        seg.className = 'kfseg';
+        seg.style.left = timeToX(kfs[i].offset) + 'px';
+        seg.style.width = Math.max(0, timeToX(kfs[i + 1].offset - kfs[i].offset)) + 'px';
+        track.appendChild(seg);
+      }
+      for (const k of kfs) {
+        const d = document.createElement('div');
+        d.className = 'kfd' + (isKeyframeSelected(row.el.id, row.property, k.id) ? ' sel' : '');
+        d.style.left = timeToX(k.offset) + 'px';
+        d.title = propertyLabel(row.property) + ' — ' + formatTime(k.offset) +
+          (k.easing ? ' — ' + k.easing : '');
+        d.addEventListener('pointerdown', (e) => {
+          e.stopPropagation();
+          startKeyframeDrag(e, row.el, row.property, k, d);
+        });
+        track.appendChild(d);
+      }
+    }
+    rowsBox.appendChild(track);
+  }
+
+  if (!rows.length) {
+    const empty = document.createElement('div');
+    empty.className = 'hint';
+    empty.textContent = 'Sélectionnez un élément, puis activez le losange d’une propriété pour l’animer. ' +
+      'Ou activez « Enreg. » et modifiez une valeur : la clé est posée automatiquement.';
+    names.appendChild(empty);
+  }
+
+  drawRuler(width);
+  $('tl-rows').style.width = width + 'px';
+  updatePlayhead();
+}
+
+function drawRuler(width) {
+  const canvas = $('tl-ruler-canvas');
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.round(width * dpr);
+  canvas.height = Math.round(22 * dpr);
+  canvas.style.width = width + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const css = getComputedStyle(document.documentElement);
+  ctx.clearRect(0, 0, width, 22);
+  ctx.fillStyle = css.getPropertyValue('--panel-2').trim() || '#2f2f2f';
+  ctx.fillRect(0, 0, width, 22);
+
+  const dim = css.getPropertyValue('--text-dim').trim() || '#9b9b9b';
+  let stepMs = 1000;
+  const candidates = [50, 100, 200, 500, 1000, 2000, 5000, 10000, 30000];
+  for (const c of candidates) { if (timeToX(c) >= 60) { stepMs = c; break; } stepMs = c; }
+
+  ctx.strokeStyle = dim;
+  ctx.fillStyle = dim;
+  ctx.font = '10px system-ui, sans-serif';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let t = 0; t <= app.doc.endTime + stepMs; t += stepMs) {
+    const x = Math.round(timeToX(t)) + 0.5;
+    ctx.moveTo(x, 13); ctx.lineTo(x, 22);
+    ctx.fillText((t / 1000).toFixed(stepMs < 1000 ? 1 : 0) + 's', x + 3, 10);
+  }
+  ctx.stroke();
+
+  // zone hors document
+  const end = timeToX(app.doc.endTime);
+  if (end < width) {
+    ctx.fillStyle = 'rgba(128,128,128,.25)';
+    ctx.fillRect(end, 0, width - end, 22);
+  }
+}
+
+function updatePlayhead() {
+  const tracks = $('tl-tracks');
+  $('playhead').style.left = (timeToX(app.time) - tracks.scrollLeft) + 'px';
+  $('t-time').textContent = formatTime(app.time) + ' / ' + formatTime(app.doc.endTime);
+}
+
+function setTime(ms, fromScrub) {
+  app.time = clamp(fromScrub ? snapToFrame(ms) : ms, 0, app.doc.endTime);
+  updatePlayhead();
+  syncPanelValues();
+  invalidate();
+}
+
+function scrubFromEvent(e) {
+  const tracks = $('tl-tracks');
+  const rect = tracks.getBoundingClientRect();
+  setTime(xToTime(e.clientX - rect.left + tracks.scrollLeft), true);
+}
+
+(function bindTimelineScrub() {
+  const tracks = $('tl-tracks');
+  let scrubbing = false;
+  tracks.addEventListener('pointerdown', (e) => {
+    if (e.target.classList.contains('kfd')) return;
+    scrubbing = true;
+    stopPlayback();
+    tracks.setPointerCapture(e.pointerId);
+    if (!e.shiftKey) { app.selectedKeyframes = []; refreshTimeline(); }
+    scrubFromEvent(e);
+  });
+  tracks.addEventListener('pointermove', (e) => { if (scrubbing) scrubFromEvent(e); });
+  tracks.addEventListener('pointerup', () => { scrubbing = false; });
+  tracks.addEventListener('scroll', () => {
+    $('tl-names').scrollTop = tracks.scrollTop;
+    updatePlayhead();
+  });
+})();
+
+function startKeyframeDrag(e, element, property, keyframe, node) {
+  stopPlayback();
+  if (e.shiftKey) {
+    if (isKeyframeSelected(element.id, property, keyframe.id)) {
+      app.selectedKeyframes = app.selectedKeyframes.filter(k => k.keyframeId !== keyframe.id);
+    } else {
+      app.selectedKeyframes.push({ elementId: element.id, property: property, keyframeId: keyframe.id });
+    }
+  } else if (!isKeyframeSelected(element.id, property, keyframe.id)) {
+    app.selectedKeyframes = [{ elementId: element.id, property: property, keyframeId: keyframe.id }];
+  }
+  setTime(keyframe.offset);
+  refreshTimeline();
+  syncEasingSelect();
+
+  const startX = e.clientX;
+  const originals = app.selectedKeyframes.map(ref => {
+    const el = findById(app.doc, ref.elementId);
+    const a = el && el.animations[ref.property];
+    const k = a && a.keyframes.find(x => x.id === ref.keyframeId);
+    return k ? { animation: a, keyframe: k, offset: k.offset } : null;
+  }).filter(Boolean);
+
+  let historyPushed = false;
+  const move = (ev) => {
+    const delta = xToTime(ev.clientX - startX);
+    if (!historyPushed && Math.abs(ev.clientX - startX) > 2) { pushHistory(); historyPushed = true; }
+    for (const o of originals) {
+      o.keyframe.offset = clamp(snapToFrame(o.offset + delta), 0, app.doc.endTime);
+    }
+    for (const o of originals) o.animation.sort();
+    refreshTimeline();
+    invalidate();
+  };
+  const up = () => {
+    window.removeEventListener('pointermove', move);
+    window.removeEventListener('pointerup', up);
+    refreshAll();
+  };
+  window.addEventListener('pointermove', move);
+  window.addEventListener('pointerup', up);
+}
+
+function deleteSelectedKeyframes() {
+  if (!app.selectedKeyframes.length) return false;
+  pushHistory();
+  for (const ref of app.selectedKeyframes) {
+    const el = findById(app.doc, ref.elementId);
+    const a = el && el.animations[ref.property];
+    if (!a) continue;
+    const k = a.keyframes.find(x => x.id === ref.keyframeId);
+    if (k) a.remove(k);
+    if (!a.hasKeyframes) delete el.animations[ref.property];
+  }
+  app.selectedKeyframes = [];
+  refreshAll();
+  return true;
+}
+
+function syncEasingSelect() {
+  const ref = app.selectedKeyframes[0];
+  if (!ref) return;
+  const el = findById(app.doc, ref.elementId);
+  const a = el && el.animations[ref.property];
+  const k = a && a.keyframes.find(x => x.id === ref.keyframeId);
+  if (k) $('t-easing').value = typeof k.easing === 'string' ? k.easing : 'linear';
+}
+
+/* ================================ lecture =============================== */
+let playHandle = null;
+function stopPlayback() {
+  if (playHandle) cancelAnimationFrame(playHandle);
+  playHandle = null;
+  app.playing = false;
+  $('t-play').innerHTML = '&#9654;';
+}
+function togglePlayback() {
+  if (app.playing) { stopPlayback(); return; }
+  app.playing = true;
+  $('t-play').textContent = '❚❚';
+  if (app.time >= app.doc.endTime) app.time = app.doc.startTime;
+  let previous = performance.now();
+  const step = (now) => {
+    if (!app.playing) return;
+    setTime(app.time + (now - previous));
+    previous = now;
+    if (app.time >= app.doc.endTime) {
+      if (app.loop) setTime(app.doc.startTime);
+      else { stopPlayback(); return; }
+    }
+    playHandle = requestAnimationFrame(step);
+  };
+  playHandle = requestAnimationFrame(step);
+}
+
+/* ============================ actions du menu =========================== */
+function deleteSelection() {
+  const els = selectedElements();
+  if (!els.length) return;
+  pushHistory();
+  for (const el of els) removeElement(app.doc, el);
+  app.selection = [];
+  refreshAll();
+}
+
+function duplicateSelection() {
+  const els = selectedElements();
+  if (!els.length) return;
+  pushHistory();
+  const created = [];
+  for (const el of els) {
+    const copy = desElement(serElement(el));
+    reassignIds(copy);
+    copy.title = el.title + ' copie';
+    copy.props.position = { x: el.props.position.x + 20, y: el.props.position.y + 20 };
+    for (const property in el.animations) copy.animations[property] = el.animations[property].clone();
+    const list = siblingsOf(app.doc, el);
+    list.push(copy);
+    copy.parent = el.parent;
+    created.push(copy.id);
+  }
+  relink(app.doc.children, null);
+  select(created);
+  refreshAll();
+}
+
+function reassignIds(el) {
+  el.id = uid('el');
+  for (const child of el.children || []) reassignIds(child);
+}
+
+function groupSelection() {
+  const els = selectedElements().filter(el => !el.parent);
+  if (els.length < 1) return;
+  pushHistory();
+  const group = createElement('group', {}, 'Groupe');
+  const firstIndex = Math.min.apply(null, els.map(el => app.doc.children.indexOf(el)));
+  for (const el of els) removeElement(app.doc, el);
+  group.children = els;
+  relink(group.children, group);
+  app.doc.children.splice(clamp(firstIndex, 0, app.doc.children.length), 0, group);
+  select([group.id]);
+  refreshAll();
+}
+
+function ungroupSelection() {
+  const groups = selectedElements().filter(el => el.type === 'group');
+  if (!groups.length) return;
+  pushHistory();
+  const freed = [];
+  for (const g of groups) {
+    const list = siblingsOf(app.doc, g);
+    const index = list.indexOf(g);
+    const m = localMatrix(g, app.time);
+    for (const child of g.children) {
+      // on reporte la transformation du groupe sur la position de l'enfant
+      const p = m.transformPoint({ x: child.props.position.x, y: child.props.position.y });
+      child.props.position = { x: round3(p.x), y: round3(p.y) };
+      child.props.rotate = (child.props.rotate || 0) + (g.props.rotate || 0);
+      child.props.scale = {
+        x: round3((child.props.scale.x || 1) * (g.props.scale.x || 1)),
+        y: round3((child.props.scale.y || 1) * (g.props.scale.y || 1))
+      };
+      child.parent = g.parent;
+      freed.push(child.id);
+    }
+    list.splice(index, 1, ...g.children);
+  }
+  relink(app.doc.children, null);
+  select(freed);
+  refreshAll();
+}
+
+function newDocument(width, height) {
+  app.doc = createDocument(width, height);
+  hoverElement = null;
+  app.selection = [];
+  app.selectedKeyframes = [];
+  app.past = []; app.future = [];
+  app.time = 0;
+  app.fileName = null;
+  propsSignature = '';
+  fitView();
+  refreshAll();
+}
+
+async function saveDocument() {
+  try {
+    const blob = await writeEaf(app.doc);
+    const name = (app.doc.title || 'animation').replace(/[^\w\-]+/g, '_') + '.eaf';
+    download(blob, name);
+    toast('Projet enregistré : ' + name, 'ok');
+  } catch (e) {
+    toast('Enregistrement impossible : ' + e.message, 'err');
+  }
+}
+
+async function openDocumentFile(file) {
+  try {
+    const doc = await readEaf(await file.arrayBuffer());
+    app.doc = doc;
+    hoverElement = null;
+    app.selection = [];
+    app.selectedKeyframes = [];
+    app.past = []; app.future = [];
+    app.time = doc.startTime;
+    app.fileName = file.name;
+    propsSignature = '';
+    fitView();
+    refreshAll();
+    toast('Projet ouvert : ' + file.name, 'ok');
+  } catch (e) {
+    toast('Ouverture impossible : ' + e.message, 'err');
+  }
+}
+
+/* ================================ export ================================ */
+const VIDEO_CANDIDATES = [
+  { muxer: 'avc', label: 'H.264', codecs: ['avc1.640034', 'avc1.640028', 'avc1.4d0034', 'avc1.4d0028', 'avc1.42003c', 'avc1.42001f', 'avc1.4d401f'] },
+  { muxer: 'vp9', label: 'VP9', codecs: ['vp09.00.10.08', 'vp09.00.31.08'] },
+  { muxer: 'av1', label: 'AV1', codecs: ['av01.0.04M.08', 'av01.0.08M.08'] }
+];
+
+async function pickVideoConfig(width, height, bitrate, fps) {
+  if (typeof VideoEncoder === 'undefined') return null;
+  for (const candidate of VIDEO_CANDIDATES) {
+    for (const codec of candidate.codecs) {
+      const config = { codec: codec, width: width, height: height, bitrate: bitrate, framerate: fps };
+      if (candidate.muxer === 'avc') config.avc = { format: 'avc' };
+      try {
+        const support = await VideoEncoder.isConfigSupported(config);
+        if (support && support.supported) return { config: config, muxer: candidate.muxer, label: candidate.label };
+      } catch (e) { /* codec suivant */ }
+    }
+  }
+  return null;
+}
+
+const exportState = { running: false, cancel: false };
+
+function exportTarget(scale) {
+  const width = Math.max(2, Math.round(app.doc.width * scale / 2) * 2);
+  const height = Math.max(2, Math.round(app.doc.height * scale / 2) * 2);
+  const canvas = document.createElement('canvas');
+  canvas.width = width; canvas.height = height;
+  const ctx = canvas.getContext('2d', { alpha: true });
+  ctx.imageSmoothingQuality = 'high';
+  return { canvas: canvas, ctx: ctx, width: width, height: height, scale: width / app.doc.width };
+}
+
+const canvasToBlob = (canvas) => new Promise((resolve, reject) =>
+  canvas.toBlob(b => b ? resolve(b) : reject(new Error('encodage PNG impossible')), 'image/png'));
+
+const exportBaseName = () => (app.doc.title || 'animation').replace(/[^\w\-]+/g, '_').slice(0, 60) || 'animation';
+
+async function runExport(options, onProgress, onLog) {
+  const target = exportTarget(options.scale);
+  const background = options.background;
+  const fps = options.fps;
+  const from = options.from, to = options.to;
+  const total = Math.max(1, Math.round((to - from) / 1000 * fps));
+  const draw = (time) => renderDocument(target.ctx, app.doc, time, { scale: target.scale, background: background });
+
+  if (options.format === 'png') {
+    draw(app.time);
+    const blob = await canvasToBlob(target.canvas);
+    download(blob, exportBaseName() + '_' + Math.round(app.time) + 'ms.png');
+    onLog('PNG exporté — ' + target.width + '×' + target.height + ', ' + Math.round(blob.size / 1024) + ' Ko');
+    return;
+  }
+
+  if (options.format === 'sequence') {
+    const files = [];
+    const pad = String(total).length;
+    for (let i = 0; i < total; i++) {
+      if (exportState.cancel) throw new Error('export annulé');
+      draw(from + (i * 1000) / fps);
+      const blob = await canvasToBlob(target.canvas);
+      files.push({ name: 'frame_' + String(i + 1).padStart(pad, '0') + '.png', data: new Uint8Array(await blob.arrayBuffer()) });
+      onProgress((i + 1) / total);
+      if (i % 5 === 0) await new Promise(r => setTimeout(r, 0));
+    }
+    const zip = zipStore(files);
+    download(zip, exportBaseName() + '_' + fps + 'fps_png.zip');
+    onLog(files.length + ' images PNG — ' + Math.round(zip.size / 1024) + ' Ko');
+    return;
+  }
+
+  // vidéo
+  const bitrate = Math.round(options.bitrate * 1000000);
+  const picked = await pickVideoConfig(target.width, target.height, bitrate, fps);
+  if (!picked) return await exportWebm(target, options, onProgress, onLog);
+  if (picked.muxer !== 'avc') {
+    onLog('H.264 indisponible ici : encodage en ' + picked.label + ' dans un conteneur MP4.');
+  }
+
+  const muxer = new Mp4Muxer.Muxer({
+    target: new Mp4Muxer.ArrayBufferTarget(),
+    video: { codec: picked.muxer, width: target.width, height: target.height, frameRate: fps },
+    fastStart: 'in-memory'
+  });
+  let encoderError = null;
+  const encoder = new VideoEncoder({
+    output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+    error: (e) => { encoderError = e; }
+  });
+  encoder.configure(picked.config);
+  onLog('Encodage ' + target.width + '×' + target.height + ', ' + fps + ' i/s, ' + total + ' images…');
+
+  const frameDuration = 1000000 / fps;
+  for (let i = 0; i < total; i++) {
+    if (exportState.cancel) { encoder.close(); throw new Error('export annulé'); }
+    if (encoderError) throw encoderError;
+    draw(from + (i * 1000) / fps);
+    const frame = new VideoFrame(target.canvas, {
+      timestamp: Math.round(i * frameDuration), duration: Math.round(frameDuration)
+    });
+    encoder.encode(frame, { keyFrame: i % (fps * 2) === 0 });
+    frame.close();
+    onProgress((i + 1) / total);
+    while (encoder.encodeQueueSize > 8) await new Promise(r => setTimeout(r, 4));
+    if (i % 10 === 0) await new Promise(r => setTimeout(r, 0));
+  }
+  await encoder.flush();
+  encoder.close();
+  if (encoderError) throw encoderError;
+  muxer.finalize();
+  const blob = new Blob([muxer.target.buffer], { type: 'video/mp4' });
+  download(blob, exportBaseName() + '_' + fps + 'fps.mp4');
+  onLog('MP4 exporté — ' + Math.round(blob.size / 1024) + ' Ko, ' + round3(total / fps) + ' s');
+}
+
+async function exportWebm(target, options, onProgress, onLog) {
+  if (typeof MediaRecorder === 'undefined' || !target.canvas.captureStream) {
+    throw new Error('aucun encodeur vidéo disponible — utilisez la séquence PNG');
+  }
+  onLog('WebCodecs indisponible : repli sur WebM.');
+  const fps = options.fps;
+  const total = Math.max(1, Math.round((options.to - options.from) / 1000 * fps));
+  const stream = target.canvas.captureStream(0);
+  const track = stream.getVideoTracks()[0];
+  const mime = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm']
+    .find(m => MediaRecorder.isTypeSupported(m)) || 'video/webm';
+  const recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: Math.round(options.bitrate * 1000000) });
+  const parts = [];
+  recorder.ondataavailable = (e) => { if (e.data.size) parts.push(e.data); };
+  const stopped = new Promise(r => { recorder.onstop = r; });
+  recorder.start();
+  for (let i = 0; i < total; i++) {
+    if (exportState.cancel) break;
+    renderDocument(target.ctx, app.doc, options.from + (i * 1000) / fps, { scale: target.scale, background: options.background });
+    if (track.requestFrame) track.requestFrame();
+    onProgress((i + 1) / total);
+    await new Promise(r => setTimeout(r, 1000 / fps));
+  }
+  recorder.stop();
+  await stopped;
+  const blob = new Blob(parts, { type: mime });
+  download(blob, exportBaseName() + '_' + fps + 'fps.webm');
+  onLog('WebM exporté — ' + Math.round(blob.size / 1024) + ' Ko');
+}
+
+function openExportDialog() {
+  stopPlayback();
+  const bg = document.createElement('div');
+  bg.className = 'modal-bg';
+  bg.id = 'export-modal';
+  bg.innerHTML =
+    '<div class="modal">' +
+    '<h2>Exporter l’animation</h2>' +
+    '<div class="field"><label>Format</label><div class="pair">' +
+      '<select id="x-format">' +
+        '<option value="mp4">Vidéo MP4</option>' +
+        '<option value="sequence">Séquence PNG (ZIP)</option>' +
+        '<option value="png">Image PNG (instant courant)</option>' +
+      '</select></div><span style="flex:0 0 22px"></span></div>' +
+    '<div class="field"><label>Images/s</label><div class="pair"><input type="number" id="x-fps" min="1" max="120"></div><span style="flex:0 0 22px"></span></div>' +
+    '<div class="field"><label>Résolution</label><div class="pair"><select id="x-scale">' +
+      '<option value="0.25">25 %</option><option value="0.5">50 %</option>' +
+      '<option value="1" selected>100 %</option><option value="2">200 %</option>' +
+      '</select></div><span style="flex:0 0 22px"></span></div>' +
+    '<div class="field"><label>Débit Mb/s</label><div class="pair"><input type="number" id="x-bitrate" value="8" min="1" max="80"></div><span style="flex:0 0 22px"></span></div>' +
+    '<div class="field"><label>De / à (s)</label><div class="pair">' +
+      '<input type="number" id="x-from" step="0.1" min="0"><input type="number" id="x-to" step="0.1" min="0">' +
+      '</div><span style="flex:0 0 22px"></span></div>' +
+    '<div class="field"><label>Fond</label><div class="pair"><select id="x-bg">' +
+      '<option value="doc">Celui du document</option><option value="#ffffff">Blanc</option>' +
+      '<option value="#000000">Noir</option><option value="transparent">Transparent (PNG)</option>' +
+      '</select></div><span style="flex:0 0 22px"></span></div>' +
+    '<progress id="x-progress" value="0" max="1" hidden></progress>' +
+    '<div id="x-log" style="font-size:12px;color:var(--text-dim);min-height:34px;margin-top:8px"></div>' +
+    '<div class="actions">' +
+      '<button id="x-cancel">Fermer</button>' +
+      '<button id="x-run" class="go">Exporter</button>' +
+    '</div></div>';
+  document.body.appendChild(bg);
+
+  $('x-fps').value = app.doc.fps;
+  $('x-from').value = round3(app.doc.startTime / 1000);
+  $('x-to').value = round3(app.doc.endTime / 1000);
+
+  const close = () => { if (!exportState.running) bg.remove(); else exportState.cancel = true; };
+  $('x-cancel').addEventListener('click', close);
+  bg.addEventListener('pointerdown', (e) => { if (e.target === bg) close(); });
+
+  $('x-run').addEventListener('click', async () => {
+    if (exportState.running) return;
+    const format = $('x-format').value;
+    const bgChoice = $('x-bg').value;
+    const options = {
+      format: format,
+      fps: clamp(parseInt($('x-fps').value, 10) || 25, 1, 120),
+      scale: parseFloat($('x-scale').value),
+      bitrate: Math.max(1, parseFloat($('x-bitrate').value) || 8),
+      from: Math.max(0, parseFloat($('x-from').value) * 1000 || 0),
+      to: Math.max(0, parseFloat($('x-to').value) * 1000 || 0),
+      background: bgChoice === 'doc' ? app.doc.background : bgChoice
+    };
+    if (options.to <= options.from && format !== 'png') {
+      $('x-log').textContent = 'La fin doit être postérieure au début.';
+      return;
+    }
+    exportState.running = true;
+    exportState.cancel = false;
+    $('x-run').disabled = true;
+    $('x-progress').hidden = false;
+    const log = (m) => { $('x-log').textContent = m; };
+    try {
+      await runExport(options, (p) => { $('x-progress').value = p; }, log);
+    } catch (e) {
+      log('Échec : ' + (e && e.message ? e.message : e));
+    } finally {
+      exportState.running = false;
+      $('x-run').disabled = false;
+      $('x-progress').hidden = true;
+    }
+  });
+}
+
+/* ============================ exemple intégré =========================== */
+const kf = (offset, value, easing) => new Keyframe(cloneValue(value), offset, easing || null);
+
+function loadDemo() {
+  const doc = createDocument(1280, 720);
+  doc.title = 'Exemple Expressive';
+  doc.endTime = 6000;
+  doc.background = '#17102e';
+
+  const star = createElement('star', {
+    position: { x: 300, y: 300 }, anchor: { x: 0, y: 0 },
+    sides: 6, outerRadius: 120, innerRadius: 52,
+    fill: { kind: 'solid', color: parseColor('#fc3dd7') }
+  }, 'Étoile');
+  star.animations.rotate = new Animation('rotate', [kf(0, 0, 'ease-in-out'), kf(6000, 360)]);
+  star.animations.scale = new Animation('scale', [
+    kf(0, { x: 0, y: 0 }, 'ease-out'), kf(900, { x: 1.15, y: 1.15 }, 'ease-in-out'), kf(1400, { x: 1, y: 1 })
+  ]);
+
+  const circle = createElement('ellipse', {
+    width: 180, height: 180, anchor: { x: 90, y: 90 }, position: { x: 980, y: 200 },
+    fill: { kind: 'solid', color: parseColor('#6e25f2') },
+    strokeBrush: { kind: 'solid', color: parseColor('#ffffff') }, strokeLineWidth: 0
+  }, 'Cercle');
+  circle.animations.position = new Animation('position', [
+    kf(400, { x: 980, y: 200 }, 'ease-in-out'), kf(2600, { x: 980, y: 520 }, 'ease-in-out'), kf(5200, { x: 980, y: 200 })
+  ]);
+  circle.animations.fill = new Animation('fill', [
+    kf(400, { kind: 'solid', color: parseColor('#6e25f2') }, 'ease-in-out'),
+    kf(2600, { kind: 'solid', color: parseColor('#ff60ce') }, 'ease-in-out'),
+    kf(5200, { kind: 'solid', color: parseColor('#6e25f2') })
+  ]);
+  circle.animations.strokeLineWidth = new Animation('strokeLineWidth', [
+    kf(400, 0, 'ease-in-out'), kf(2600, 14, 'ease-in-out'), kf(5200, 0)
+  ]);
+
+  const bar = createElement('rect', {
+    width: 420, height: 14, radius: { rx: 7, ry: 7, multiple: true },
+    position: { x: 430, y: 470 }, anchor: { x: 0, y: 7 },
+    fill: { kind: 'solid', color: parseColor('#c93dfc') }
+  }, 'Barre');
+  bar.animations.scale = new Animation('scale', [kf(1200, { x: 0, y: 1 }, 'ease-out'), kf(3200, { x: 1, y: 1 })]);
+  bar.animations.opacity = new Animation('opacity', [kf(1000, 0, 'ease-out'), kf(1400, 1)]);
+
+  const title = createElement('text', {
+    text: 'Expressive Studio', fontSize: 76, fontWeight: 700,
+    position: { x: 430, y: 400 }, fill: { kind: 'solid', color: parseColor('#ffffff') }
+  }, 'Titre');
+  title.animations.opacity = new Animation('opacity', [kf(600, 0, 'ease-out'), kf(1500, 1)]);
+  title.animations.position = new Animation('position', [
+    kf(600, { x: 430, y: 440 }, 'ease-out'), kf(1500, { x: 430, y: 400 })
+  ]);
+
+  const subtitle = createElement('text', {
+    text: 'Animer, prévisualiser, exporter', fontSize: 30, fontWeight: 400,
+    position: { x: 432, y: 530 }, fill: { kind: 'solid', color: parseColor('#c9b8f5') }
+  }, 'Sous-titre');
+  subtitle.animations.opacity = new Animation('opacity', [kf(1600, 0, 'ease-out'), kf(2400, 1)]);
+
+  doc.children = [star, circle, bar, title, subtitle];
+  relink(doc.children, null);
+
+  app.doc = doc;
+  hoverElement = null;
+  app.selection = [];
+  app.selectedKeyframes = [];
+  app.past = []; app.future = [];
+  app.time = 0;
+  propsSignature = '';
+  fitView();
+  refreshAll();
+}
+
+/* =============================== interface ============================== */
+function showTab(which) {
+  $('tab-props').classList.toggle('on', which === 'props');
+  $('tab-layers').classList.toggle('on', which === 'layers');
+  $('pane-props').hidden = which !== 'props';
+  $('pane-layers').hidden = which === 'props';
+}
+
+function refreshAll() {
+  refreshPanels();
+  refreshLayers();
+  refreshTimeline();
+  updateHistoryButtons();
+  invalidate();
+}
+
+function bindUi() {
+  $('tab-props').addEventListener('click', () => showTab('props'));
+  $('tab-layers').addEventListener('click', () => showTab('layers'));
+
+  $('m-new').addEventListener('click', () => {
+    if (app.doc.children.length && !confirm('Créer un nouveau document ? Les modifications non enregistrées seront perdues.')) return;
+    newDocument();
+  });
+  $('m-open').addEventListener('click', () => $('file-input').click());
+  $('file-input').addEventListener('change', (e) => {
+    if (e.target.files[0]) openDocumentFile(e.target.files[0]);
+    e.target.value = '';
+  });
+  $('m-save').addEventListener('click', saveDocument);
+  $('m-undo').addEventListener('click', undo);
+  $('m-redo').addEventListener('click', redo);
+  $('m-group').addEventListener('click', groupSelection);
+  $('m-ungroup').addEventListener('click', ungroupSelection);
+  $('m-dup').addEventListener('click', duplicateSelection);
+  $('m-del').addEventListener('click', deleteSelection);
+  $('m-demo').addEventListener('click', loadDemo);
+  $('m-export').addEventListener('click', openExportDialog);
+  $('m-theme').addEventListener('click', () => {
+    const root = document.documentElement;
+    root.dataset.theme = root.dataset.theme === 'light' ? 'dark' : 'light';
+    invalidate();
+    refreshTimeline();
+  });
+
+  $('v-fit').addEventListener('click', fitView);
+  $('v-100').addEventListener('click', () => zoomTo(1));
+  $('v-grid').addEventListener('click', () => {
+    app.grid = !app.grid;
+    $('v-grid').classList.toggle('on', app.grid);
+    invalidate();
+  });
+
+  $('t-rec').addEventListener('click', () => {
+    app.recording = !app.recording;
+    $('t-rec').classList.toggle('on', app.recording);
+    toast(app.recording
+      ? 'Enregistrement actif : toute modification pose une clé au temps courant.'
+      : 'Enregistrement désactivé.');
+  });
+  $('t-play').addEventListener('click', togglePlayback);
+  $('t-start').addEventListener('click', () => { stopPlayback(); setTime(app.doc.startTime); });
+  $('t-end').addEventListener('click', () => { stopPlayback(); setTime(app.doc.endTime); });
+  $('t-loop').addEventListener('click', () => {
+    app.loop = !app.loop;
+    $('t-loop').classList.toggle('on', app.loop);
+  });
+  $('t-addkf').addEventListener('click', () => {
+    pushHistory();
+    const n = addKeyframesAtCurrentTime();
+    refreshAll();
+    toast(n ? n + ' clé(s) posée(s) à ' + formatTime(app.time) : 'Aucune propriété animée : activez d’abord un losange.');
+  });
+  $('t-delkf').addEventListener('click', () => {
+    if (!deleteSelectedKeyframes()) toast('Sélectionnez d’abord une ou plusieurs clés.');
+  });
+  $('t-easing').addEventListener('change', () => {
+    if (!app.selectedKeyframes.length) { toast('Sélectionnez une clé pour lui appliquer une accélération.'); return; }
+    pushHistory();
+    const value = $('t-easing').value === 'linear' ? null : $('t-easing').value;
+    for (const ref of app.selectedKeyframes) {
+      const el = findById(app.doc, ref.elementId);
+      const a = el && el.animations[ref.property];
+      const k = a && a.keyframes.find(x => x.id === ref.keyframeId);
+      if (k) k.easing = value;
+    }
+    refreshTimeline();
+    invalidate();
+  });
+  $('t-zoom').addEventListener('input', () => {
+    app.timelineZoom = parseInt($('t-zoom').value, 10);
+    refreshTimeline();
+  });
+
+  window.addEventListener('resize', () => { resizeStage(); refreshTimeline(); });
+
+  window.addEventListener('keydown', (e) => {
+    const target = e.target;
+    const typing = target && (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA');
+    if (e.code === 'Space' && !typing) { spaceDown = true; }
+    if (typing) {
+      if (e.key === 'Escape') target.blur();
+      return;
+    }
+    const ctrl = e.ctrlKey || e.metaKey;
+    if (ctrl && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+    if (ctrl && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); return; }
+    if (ctrl && e.key.toLowerCase() === 's') { e.preventDefault(); saveDocument(); return; }
+    if (ctrl && e.key.toLowerCase() === 'd') { e.preventDefault(); duplicateSelection(); return; }
+    if (ctrl && e.key.toLowerCase() === 'g') { e.preventDefault(); e.shiftKey ? ungroupSelection() : groupSelection(); return; }
+    if (ctrl && e.key.toLowerCase() === 'a') { e.preventDefault(); select(app.doc.children.map(el => el.id)); return; }
+    if (ctrl && e.key === '0') { e.preventDefault(); zoomTo(1); return; }
+    if (e.shiftKey && e.key === '0') { e.preventDefault(); fitView(); return; }
+
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      e.preventDefault();
+      if (!deleteSelectedKeyframes()) deleteSelection();
+      return;
+    }
+    if (e.code === 'Space') { e.preventDefault(); togglePlayback(); return; }
+    if (e.key === 'Escape') { select([]); app.selectedKeyframes = []; refreshAll(); return; }
+
+    const nudge = e.shiftKey ? 10 : 1;
+    const arrows = { ArrowLeft: [-nudge, 0], ArrowRight: [nudge, 0], ArrowUp: [0, -nudge], ArrowDown: [0, nudge] };
+    if (arrows[e.key]) {
+      const els = selectedElements();
+      if (els.length) {
+        e.preventDefault();
+        pushHistory();
+        for (const el of els) {
+          const p = cloneValue(propertyValue(el, 'position', app.time));
+          setProperty(el, 'position', { x: p.x + arrows[e.key][0], y: p.y + arrows[e.key][1] });
+        }
+        refreshPanels(); refreshTimeline(); invalidate();
+      }
+      return;
+    }
+    if (e.key === ',' || e.key === '.') {
+      e.preventDefault();
+      setTime(app.time + (e.key === '.' ? frameMs() : -frameMs()), true);
+      return;
+    }
+    const tool = TOOLS.find(t => t.key.toLowerCase() === e.key.toLowerCase());
+    if (tool) setTool(tool.id);
+  });
+  window.addEventListener('keyup', (e) => { if (e.code === 'Space') spaceDown = false; });
+}
+
+/* =============================== démarrage ============================== */
+function boot() {
+  buildToolbar();
+  bindUi();
+  resizeStage();
+  loadDemo();
+  setTool('select');
+  renderLoop();
+  updateHistoryButtons();
+}
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+else boot();
+
+/* Points d'entrée pour les tests automatisés. */
+window.ExpressiveStudio = {
+  app: app,
+  createElement: createElement, addElementToDocument: addElementToDocument,
+  setProperty: setProperty, toggleAnimated: toggleAnimated, setTime: setTime,
+  select: select, refreshAll: refreshAll, pushHistory: pushHistory, undo: undo, redo: redo,
+  writeEaf: writeEaf, readEaf: readEaf, serializeDocument: serializeDocument,
+  deserializeDocument: deserializeDocument, snapshot: snapshot,
+  loadDemo: loadDemo, newDocument: newDocument, fitView: fitView,
+  runExport: runExport, pickVideoConfig: pickVideoConfig,
+  groupSelection: groupSelection, ungroupSelection: ungroupSelection,
+  duplicateSelection: duplicateSelection, deleteSelection: deleteSelection,
+  deleteSelectedKeyframes: deleteSelectedKeyframes,
+  Animation: Animation, Keyframe: Keyframe, findById: (id) => findById(app.doc, id),
+  stateAt: stateAt, localBounds: localBounds, pickElement: (p) => pickElement(app.doc, p, app.time),
+  zipStore: zipStore, walk: () => Array.from(walk(app.doc.children))
+};
+})();
+
+</script>
+</body>
+</html>
