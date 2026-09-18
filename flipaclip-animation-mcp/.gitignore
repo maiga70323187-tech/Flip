@@ -1,0 +1,9 @@
+node_modules/
+.env
+.DS_Store
+backend/data/projects/*.json
+backend/data/assets/*
+!backend/data/projects/.gitkeep
+!backend/data/assets/.gitkeep
+output/exports/*
+!output/exports/.gitkeep

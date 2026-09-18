@@ -1,0 +1,4 @@
+export const TOOL_NAMES=['generate_character','generate_object','generate_background','create_frame','duplicate_frame','delete_frame','reorder_frames','move_element','rotate_element','scale_element','create_layer','set_layer_order','toggle_layer_visibility','inpaint_region','add_transition','apply_effect','add_audio_track','sync_to_audio','preview_animation','export_animation'];
+export const API_BASE=process.env.FLIPACLIP_API_URL??'http://localhost:8787';
+export async function callApi(path,{method='GET',body}={}){const r=await fetch(`${API_BASE}${path}`,{method,headers:{'content-type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)});const text=await r.text();let data;try{data=JSON.parse(text)}catch{data={text}}if(!r.ok)throw new Error(data.error??`HTTP ${r.status}`);return data;}
+export const asContent=data=>({content:[{type:'text',text:JSON.stringify(data,null,2)}]});
