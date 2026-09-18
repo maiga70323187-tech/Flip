@@ -80,46 +80,52 @@ export function buildHumanoidRig(opts = {}) {
     bone('neck', 'chest', { rotation: 0, length: P.neckLen }),
     bone('head', 'neck', { rotation: 0, length: P.headLen, limits: DEFAULT_LIMITS.head }),
 
-    // Bras gauche
-    bone('clavicle_L', 'chest', { rotation: 180, length: P.clavicleLen }),
-    bone('shoulder_L', 'clavicle_L', { rotation: -100, length: P.upperArmLen, limits: DEFAULT_LIMITS.shoulder }),
-    bone('elbow_L', 'shoulder_L', { rotation: 10, length: P.forearmLen, limits: DEFAULT_LIMITS.elbow }),
+    // Bras gauche (au repos, hangs down). chest world = -90.
+    // clavicle_L world = -90 + (-90) = -180 = 180 (pointe à gauche)
+    bone('clavicle_L', 'chest', { rotation: -90, length: P.clavicleLen }),
+    // shoulder_L world = 180 + (-90) = 90 (pointe vers le bas) ✓
+    bone('shoulder_L', 'clavicle_L', { rotation: -90, length: P.upperArmLen, limits: DEFAULT_LIMITS.shoulder }),
+    bone('elbow_L', 'shoulder_L', { rotation: 0, length: P.forearmLen, limits: DEFAULT_LIMITS.elbow }),
     bone('wrist_L', 'elbow_L', { rotation: 0, length: P.handLen, limits: DEFAULT_LIMITS.wrist }),
 
-    // Bras droit
-    bone('clavicle_R', 'chest', { rotation: 0, length: P.clavicleLen }),
-    bone('shoulder_R', 'clavicle_R', { rotation: 80, length: P.upperArmLen, limits: DEFAULT_LIMITS.shoulder }),
-    bone('elbow_R', 'shoulder_R', { rotation: 10, length: P.forearmLen, limits: DEFAULT_LIMITS.elbow }),
+    // Bras droit. clavicle_R world = -90 + 90 = 0 (pointe à droite)
+    bone('clavicle_R', 'chest', { rotation: 90, length: P.clavicleLen }),
+    // shoulder_R world = 0 + 90 = 90 (pointe vers le bas)
+    bone('shoulder_R', 'clavicle_R', { rotation: 90, length: P.upperArmLen, limits: DEFAULT_LIMITS.shoulder }),
+    bone('elbow_R', 'shoulder_R', { rotation: 0, length: P.forearmLen, limits: DEFAULT_LIMITS.elbow }),
     bone('wrist_R', 'elbow_R', { rotation: 0, length: P.handLen, limits: DEFAULT_LIMITS.wrist }),
 
     // Jambe gauche (hip_L décalé horizontalement puis descend)
     bone('hip_L', 'hips', { rotation: 180, length: P.pelvisWidth / 2 }),
     bone('knee_L', 'hip_L', { rotation: -90, length: P.thighLen, limits: DEFAULT_LIMITS.hip }),
     bone('ankle_L', 'knee_L', { rotation: 0, length: P.shinLen, limits: DEFAULT_LIMITS.knee }),
-    bone('foot_L', 'ankle_L', { rotation: 90, length: P.footLen, limits: DEFAULT_LIMITS.ankle }),
+    bone('foot_L', 'ankle_L', { rotation: 0, length: P.footLen, limits: DEFAULT_LIMITS.ankle }),
 
     // Jambe droite
     bone('hip_R', 'hips', { rotation: 0, length: P.pelvisWidth / 2 }),
     bone('knee_R', 'hip_R', { rotation: 90, length: P.thighLen, limits: DEFAULT_LIMITS.hip }),
     bone('ankle_R', 'knee_R', { rotation: 0, length: P.shinLen, limits: DEFAULT_LIMITS.knee }),
-    bone('foot_R', 'ankle_R', { rotation: 90, length: P.footLen, limits: DEFAULT_LIMITS.ankle }),
+    bone('foot_R', 'ankle_R', { rotation: 0, length: P.footLen, limits: DEFAULT_LIMITS.ankle }),
   ];
 
   // Slots : un par bone visible.
   // Z-order de docs/knowledge/05_LAYERING_AND_ZORDER.md
+  // Convention : les bones hip_L / hip_R sont des CONNECTEURS pelviens (courts,
+  // horizontaux). Les parts jambes (cuisse/tibia/pied) sont attachées aux bones
+  // knee_L/ankle_L/foot_L qui sont eux les segments visuels.
   const slots = [
     slot('hair_back',  'head',       10, 'hair_back'),
     slot('arm_back',   'shoulder_L', 20, 'upperArm_L'),
     slot('forearm_back','elbow_L',   21, 'forearm_L'),
     slot('hand_back',  'wrist_L',    22, 'hand_L_open'),
-    slot('leg_back',   'hip_L',      25, 'thigh_L'),
-    slot('shin_back',  'knee_L',     26, 'shin_L'),
-    slot('foot_back',  'ankle_L',    27, 'foot_L'),
+    slot('leg_back',   'knee_L',     25, 'thigh_L'),
+    slot('shin_back',  'ankle_L',    26, 'shin_L'),
+    slot('foot_back',  'foot_L',     27, 'foot_L'),
     slot('pelvis',     'hips',       30, 'pelvis'),
     slot('torso',      'chest',      31, 'torso'),
-    slot('leg_front',  'hip_R',      35, 'thigh_R'),
-    slot('shin_front', 'knee_R',     36, 'shin_R'),
-    slot('foot_front', 'ankle_R',    37, 'foot_R'),
+    slot('leg_front',  'knee_R',     35, 'thigh_R'),
+    slot('shin_front', 'ankle_R',    36, 'shin_R'),
+    slot('foot_front', 'foot_R',     37, 'foot_R'),
     slot('arm_front',  'shoulder_R', 50, 'upperArm_R'),
     slot('forearm_front','elbow_R',  51, 'forearm_R'),
     slot('hand_front', 'wrist_R',    52, 'hand_R_open'),
@@ -136,14 +142,15 @@ export function buildHumanoidRig(opts = {}) {
     part('upperArm_L','shoulder_L', { pivot: { x: 0.5, y: 0.08 }, zIndex: 20 }),
     part('forearm_L', 'elbow_L',    { pivot: { x: 0.5, y: 0.08 }, zIndex: 21 }),
     part('hand_L_open','wrist_L',   { pivot: { x: 0.5, y: 0.1 }, zIndex: 22, variantGroup: 'hand_back' }),
-    part('thigh_L',   'hip_L',      { pivot: { x: 0.5, y: 0.08 }, zIndex: 25 }),
-    part('shin_L',    'knee_L',     { pivot: { x: 0.5, y: 0.08 }, zIndex: 26 }),
-    part('foot_L',    'ankle_L',    { pivot: { x: 0.3, y: 0.5 },  zIndex: 27 }),
+    // Parts jambes attachées aux bones qui les représentent visuellement.
+    part('thigh_L',   'knee_L',     { pivot: { x: 0.5, y: 0.08 }, zIndex: 25 }),
+    part('shin_L',    'ankle_L',    { pivot: { x: 0.5, y: 0.08 }, zIndex: 26 }),
+    part('foot_L',    'foot_L',     { pivot: { x: 0.3, y: 0.5 },  zIndex: 27 }),
     part('pelvis',    'hips',       { pivot: { x: 0.5, y: 0.5 },  zIndex: 30 }),
     part('torso',     'chest',      { pivot: { x: 0.5, y: 0.88 }, zIndex: 31 }),
-    part('thigh_R',   'hip_R',      { pivot: { x: 0.5, y: 0.08 }, zIndex: 35 }),
-    part('shin_R',    'knee_R',     { pivot: { x: 0.5, y: 0.08 }, zIndex: 36 }),
-    part('foot_R',    'ankle_R',    { pivot: { x: 0.3, y: 0.5 },  zIndex: 37 }),
+    part('thigh_R',   'knee_R',     { pivot: { x: 0.5, y: 0.08 }, zIndex: 35 }),
+    part('shin_R',    'ankle_R',    { pivot: { x: 0.5, y: 0.08 }, zIndex: 36 }),
+    part('foot_R',    'foot_R',     { pivot: { x: 0.3, y: 0.5 },  zIndex: 37 }),
     part('upperArm_R','shoulder_R', { pivot: { x: 0.5, y: 0.08 }, zIndex: 50 }),
     part('forearm_R', 'elbow_R',    { pivot: { x: 0.5, y: 0.08 }, zIndex: 51 }),
     part('hand_R_open', 'wrist_R',  { pivot: { x: 0.5, y: 0.1 },  zIndex: 52, variantGroup: 'hand_front' }),
