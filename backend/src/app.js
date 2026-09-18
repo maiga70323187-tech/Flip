@@ -16,6 +16,7 @@ import { generateDecor, DECOR_PRESETS } from './services/decor.js';
 import { svgToPng, svgsToMp4 } from './services/rasterize.js';
 import { buildHumanoidRig } from './services/humanoid-rig.js';
 import { buildProceduralCharacter, PALETTES } from './services/procedural-character.js';
+import { listPacks, loadPack, applyPackToCharacter } from './services/asset-pack-loader.js';
 import { FlipError } from './lib/model.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -340,6 +341,17 @@ export function createApp() {
     const rig = buildHumanoidRig(req.body ?? {});
     const c = await store.addCharacter(req.params.id, rig);
     res.status(201).json(c);
+  }));
+
+  // Packs d'assets vectoriels (Voie C : source de qualité pro).
+  app.get('/api/asset-packs', wrap(async (req, res) => res.json(await listPacks())));
+  app.get('/api/asset-packs/:pack', wrap(async (req, res) => {
+    const { manifest, assets, variant } = await loadPack(req.params.pack, req.query.variant ?? 'default');
+    res.json({ manifest, variant, parts: Object.keys(assets) });
+  }));
+  app.post('/api/projects/:id/characters/:cid/apply_pack', wrap(async (req, res) => {
+    const result = await applyPackToCharacter(store, req.params.id, req.params.cid, req.body.pack, req.body.variant ?? 'default');
+    res.json(result);
   }));
 
   // Générateur procédural — rig + SVGs de chaque part codés à la main.

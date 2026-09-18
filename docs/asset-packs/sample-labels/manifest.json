@@ -1,0 +1,8 @@
+{
+  "id": "sample-labels",
+  "name": "Sample Labels (debug)",
+  "license": "CC0",
+  "attribution": "Flip",
+  "variants": { "default": {} },
+  "notes": "Pack de démo : chaque part est un rectangle coloré avec le nom du slot en étiquette. Sert à vérifier que le loader marche et que le naming correspond bien aux slots du rig. À remplacer par un vrai pack (Open Peeps, Humaaans, ou vos propres SVGs) pour un rendu pro."
+}

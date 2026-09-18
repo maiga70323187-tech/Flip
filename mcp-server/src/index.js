@@ -223,9 +223,22 @@ s.tool('build_humanoid_rig', 'Créer un personnage humanoïde complet (bones + s
   { project_id: z.string(), name: z.string().optional(), origin_x: z.number().optional(), origin_y: z.number().optional(), style_profile: z.any().optional() },
   async ({ project_id, name, origin_x, origin_y, style_profile }) => asContent(await callApi(`/api/projects/${project_id}/characters/humanoid_rig`, { method: 'POST', body: { name, originX: origin_x, originY: origin_y, styleProfile: style_profile } })));
 
-s.tool('build_procedural_character', 'Créer un humanoïde COMPLET avec des SVG de chaque partie du corps générés localement (aucun modèle externe). L\'agent choisit le style (nom de palette), le moteur produit les paths Bézier de tête/torse/bras/jambes/mains/pieds/cheveux. La règle #10 CLAUDE.md est respectée : ce ne sont pas des primitives brutes mais un dessin flat-cartoon assemblé.',
+s.tool('build_procedural_character', 'Créer un humanoïde COMPLET avec des SVG de chaque partie du corps générés localement (aucun modèle externe). L\'agent choisit le style (nom de palette), le moteur produit les paths Bézier de tête/torse/bras/jambes/mains/pieds/cheveux. La règle #10 CLAUDE.md est respectée : ce ne sont pas des primitives brutes mais un dessin flat-cartoon assemblé. QUALITÉ MOYENNE — utiliser attach_asset_pack pour un rendu pro à partir de packs libres.',
   { project_id: z.string(), name: z.string().optional(), origin_x: z.number().optional(), origin_y: z.number().optional(), palette_name: z.string().optional() },
   async ({ project_id, name, origin_x, origin_y, palette_name }) => asContent(await callApi(`/api/projects/${project_id}/characters/procedural`, { method: 'POST', body: { name, originX: origin_x, originY: origin_y, paletteName: palette_name } })));
+
+// ---------- Packs d'assets (Voie C) ----------
+s.tool('list_asset_packs', 'Lister les packs d\'assets vectoriels disponibles dans docs/asset-packs/. Chaque pack est un dossier de SVG nommés par part.id (head.svg, torso.svg, upperArm_L.svg…). Origine : dessins hand-crafted, packs CC0 comme Open Peeps / Humaaans / unDraw, ou packs personnels.',
+  {},
+  async () => asContent(await callApi('/api/asset-packs')));
+
+s.tool('get_asset_pack_info', 'Détail d\'un pack : manifest (license, variants) et liste des parts fournies',
+  { pack: z.string(), variant: z.string().optional() },
+  async ({ pack, variant }) => asContent(await callApi(`/api/asset-packs/${pack}${variant ? `?variant=${variant}` : ''}`)));
+
+s.tool('attach_asset_pack', 'Attacher un pack vectoriel aux parts d\'un personnage. Pour chaque part dont l\'id correspond à une clé du pack, l\'assetRoot est branché. Retourne { attached: [...], missing: [...] } pour que l\'agent voie ce qui manque.',
+  { project_id: z.string(), character_id: z.string(), pack: z.string(), variant: z.string().optional() },
+  async ({ project_id, character_id, pack, variant }) => asContent(await callApi(`/api/projects/${project_id}/characters/${character_id}/apply_pack`, { method: 'POST', body: { pack, variant } })));
 
 s.tool('set_character_variant', 'Sélectionner quelle variante de part est visible pour un slot donné (ex: slot_id="hand_front", part_id="hand_R_fist"). Refuse MISSING_SLOT/MISSING_ASSET si l\'id est inconnu.',
   { project_id: z.string(), character_id: z.string(), slot_id: z.string(), part_id: z.string().nullable() },
